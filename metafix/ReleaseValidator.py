@@ -196,7 +196,12 @@ class ReleaseValidator:
             if not release.tracks[filename].disc_number and disc_num:
                 release.tracks[filename].disc_number = disc_num
 
-        validated_track_numbers = release.validate_track_numbers()
+        # fill in missing total track numbers
+        validated_track_numbers = release.get_total_tracks()
+        for track in release.tracks.values():
+            disc_number = track.disc_number if track.disc_number else 1
+            if not track.total_tracks and validated_track_numbers.get(disc_number):
+                track.total_tracks = validated_track_numbers[disc_number]
 
 
         # release artists
