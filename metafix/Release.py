@@ -200,6 +200,23 @@ class Release:
         else:
             return track_numbers
 
+    def get_total_tracks(self) -> Dict[int, int]:
+
+        result = OrderedDict()
+
+        track_numbers = self.__get_disc_numbers_by_track()
+
+        for disc in track_numbers:
+            all_tracks_present = True
+            for i in range(0, len(track_numbers[disc]) - 1):
+                if track_numbers[disc][i] != track_numbers[disc][i + 1] - 1:
+                    all_tracks_present = False
+
+            result[disc] = len(track_numbers[disc]) if all_tracks_present else None
+
+        return result
+
+
     # return an invalid sequence of total tracks tags
     def validate_total_tracks(self) -> List[int]:
         violating_discs = []
