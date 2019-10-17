@@ -4,6 +4,7 @@ from typing import Dict, List
 
 from cleartag.enums.TagType import TagType
 from metafix.Track import Track
+from metafix.constants import valid_release_categories
 from metafix.functions import unique, lastfm_flatten_artists, get_category_fix_name, normalise_path_chars
 
 
@@ -80,10 +81,6 @@ class Release:
         # clean release name, and category
         release_name, release_category = get_category_fix_name(track1.release_title,
                                                                  len(self.tracks), is_VA)
-
-        valid_release_categories = ['Album', 'Soundtrack', 'EP', 'Anthology', 'Compilation', 'Single', 'Live Album',
-                                    'Remix', 'Bootleg', 'Interview', 'Mixtape', 'Demo', 'Concert Recording', 'DJ Mix',
-                                    'Unknown']
 
         valid_release_categories_lower = [x.lower() for x in valid_release_categories]
         if manual_release_category and manual_release_category.lower() in valid_release_categories_lower:
