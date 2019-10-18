@@ -126,10 +126,14 @@ class ReleaseValidator:
             # track artists
             for track in release.tracks.values():
                 for artist in track.artists:
-                    validated_artist = self.lastfm.get_artist(normalize_str(artist)).artist_name
-                    if validated_artist != artist:
-                        violations.add("Incorrectly spelled Track Artist '{0}' (should be '{1}')"
-                                       .format(artist, validated_artist))
+                    try:
+                        validated_artist = self.lastfm.get_artist(normalize_str(artist)).artist_name
+                        if validated_artist != artist:
+                            violations.add("Incorrectly spelled Track Artist '{0}' (should be '{1}')"
+                                           .format(artist, validated_artist))
+                    except lastfmcache.lastfmcacheException as e:
+                        violations.add(str(e))
+
 
         validated_track_numbers = release.validate_track_numbers()
         if validated_track_numbers:
@@ -165,14 +169,13 @@ class ReleaseValidator:
 
         if len(release.get_cbr_bitrates()) > 1:
             violations.add("Release has a mixture of CBR bitrates: {0}"
-                           .format(" ,".join([str(x) for x in release.get_cbr_bitrates()])))
+                           .format(", ".join([str(x) for x in release.get_cbr_bitrates()])))
 
         # track titles
-        if not len(violations):
-            for filename in release.tracks:
-                correct_filename = release.tracks[filename].get_filename(release.is_VA())
-                if filename != correct_filename:
-                    violations.add("Invalid filename: {0} (should be {1})".format(filename, correct_filename))
+        for filename in release.tracks:
+            correct_filename = release.tracks[filename].get_filename(release.is_VA())
+            if filename != correct_filename:
+                violations.add("Invalid filename: {0} (should be {1})".format(filename, correct_filename))
 
         return list(violations)
 
@@ -230,8 +233,9 @@ class ReleaseValidator:
             if lastfm_release.release_name != release_title:
                 # and lastfm_release.release_name.lower() != release_title.lower() \
                 # and not any(x.isupper() for x in release_title):
-
-                release_title_full = "{0} {1}".format(lastfm_release.release_name, release_edition)
+                release_title_full = lastfm_release.release_name
+                if release_edition:
+                    release_title_full = "{0} {1}".format(lastfm_release.release_name, release_edition)
 
                 for track in release.tracks.values():
                     track.release_title = release_title_full
@@ -267,7 +271,10 @@ class ReleaseValidator:
             for track in release.tracks.values():
                 validated_artists = []
                 for artist in track.artists:
-                    validated_artists.append(self.lastfm.get_artist(artist).artist_name)
+                    try:
+                        validated_artists.append(self.lastfm.get_artist(artist).artist_name)
+                    except lastfmcache.lastfmcacheException:
+                        pass
                 if len(validated_artists) == len(track.artists):
                     track.artists = validated_artists
 

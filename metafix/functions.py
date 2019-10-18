@@ -1,6 +1,9 @@
+import os
 import re
 from collections import OrderedDict
 from typing import List, Dict
+
+from metafix.constants import audio_extensions
 
 
 def unique(seq: List):
@@ -124,7 +127,7 @@ def tag_filter(tag: str, ignore_substrings: List[str], capitalize:bool):
                        'my music', 'music to download', ]:
         return None
 
-    for substring in ['artist', 'bpm', 'best of', 'album', 'favorite', 'favourite', 'vinyl', 'seen ']:
+    for substring in ['artist', 'bpm', 'best of', 'album', 'favorite', 'favourite', 'vinyl', 'seen ', 'albun', 'need']:
         if substring in tag:
             return None
 
@@ -160,7 +163,7 @@ def tag_filter(tag: str, ignore_substrings: List[str], capitalize:bool):
     if capitalize:
         tag = capitalize_tag(tag)
 
-        tag_allcaps = ["uk"]
+        tag_allcaps = ["av", "uk"]
 
         if tag.lower() in tag_allcaps:
             tag = tag.upper()
@@ -205,3 +208,6 @@ def extract_track_disc(filename):
         disc = int(match[0][:-2])
 
     return track, disc
+
+def has_audio_extension(path):
+    return os.path.splitext(path)[1].lower() in audio_extensions
