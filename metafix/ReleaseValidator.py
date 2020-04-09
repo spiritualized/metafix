@@ -2,7 +2,7 @@ import copy
 from collections import OrderedDict
 from typing import List
 
-from lastfmcache import lastfmcache
+from lastfmcache import LastfmCache
 from ordered_set import OrderedSet
 
 from metafix.Release import Release
@@ -13,7 +13,7 @@ from metafix.functions import normalize_str, lastfm_flatten_artists, normalize_t
 
 class ReleaseValidator:
 
-    def __init__(self, lastfm: lastfmcache = None):
+    def __init__(self, lastfm: LastfmCache = None):
         self.lastfm = lastfm
 
     def validate(self, release: Release) -> List[str]:
@@ -109,10 +109,9 @@ class ReleaseValidator:
             # tags/genres (only fail if 0-1 genres - i.e. lastfm tags have never been applied)
             release_genres = release.validate_genres()
             lastfm_tags = self.__get_lastfm_tags(release_title, validated_release_artists)
-            if len(release_genres) < 2 and len(lastfm_tags) >= 2:
+            if len(release_genres) < 2 <= len(lastfm_tags):
                 violations.add("Bad release genres: [{0}] (should be [{1}])"
                                .format(", ".join(release_genres), ", ".join(lastfm_tags)))
-
 
             # match and validate track titles (intersection only)
             for track in release.tracks.values():
@@ -131,9 +130,8 @@ class ReleaseValidator:
                         if validated_artist != artist:
                             violations.add("Incorrectly spelled Track Artist '{0}' (should be '{1}')"
                                            .format(artist, validated_artist))
-                    except lastfmcache.lastfmcacheException as e:
+                    except LastfmCache.LastfmCacheError as e:
                         violations.add(str(e))
-
 
         validated_track_numbers = release.validate_track_numbers()
         if validated_track_numbers:
@@ -206,6 +204,12 @@ class ReleaseValidator:
             if not track.total_tracks and validated_track_numbers.get(disc_number):
                 track.total_tracks = validated_track_numbers[disc_number]
 
+        # fill in missing total disc numbers
+        if not release.validate_total_discs():
+            total_discs = release.get_total_discs()
+            if total_discs:
+                for track in release.tracks.values():
+                    track.total_discs = total_discs
 
         # release artists
         release_artists = release.validate_release_artists()
@@ -250,7 +254,7 @@ class ReleaseValidator:
             # tags/genres (only fail if 0-1 genres - i.e. lastfm tags have never been applied)
             release_genres = release.validate_genres()
             lastfm_tags = self.__get_lastfm_tags(release_title, validated_release_artists)
-            if len(release_genres) < 2 and len(lastfm_tags) >= 2:
+            if len(release_genres) < 2 <= len(lastfm_tags):
                 for track in release.tracks.values():
                     track.genres = lastfm_tags
 
@@ -273,13 +277,12 @@ class ReleaseValidator:
                 for artist in track.artists:
                     try:
                         validated_artists.append(self.lastfm.get_artist(artist).artist_name)
-                    except lastfmcache.lastfmcacheException:
+                    except LastfmCache.LastfmCacheError:
                         pass
                 if len(validated_artists) == len(track.artists):
                     track.artists = validated_artists
 
         return release
-
 
     # tags/genres
     def __get_lastfm_tags(self, release_title: str, release_artists: List[str]):

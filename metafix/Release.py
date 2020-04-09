@@ -1,6 +1,6 @@
 import os
 from collections import OrderedDict
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from cleartag.enums.TagType import TagType
 from metafix.Track import Track
@@ -252,6 +252,15 @@ class Release:
     def validate_total_discs(self) -> bool:
         total_discs = unique([track.total_discs for track in self.tracks.values()])
         return len(total_discs) == 1 and total_discs[0] == sorted(list(self.__get_disc_numbers_by_track()))[-1]
+
+    def get_total_discs(self) -> Optional[int]:
+        disc_numbers = sorted(unique([track.disc_number for track in self.tracks.values()]))
+        if disc_numbers[0] != 1:
+            return None
+        for x in range(len(disc_numbers) - 1):
+            if disc_numbers[x] != disc_numbers[x+1] - 1:
+                return None
+        return disc_numbers[-1]
 
     # return a list of genres, or [] if inconsistent/empty
     def validate_genres(self):
