@@ -131,7 +131,8 @@ class ReleaseValidator:
                             violations.add("Incorrectly spelled Track Artist '{0}' (should be '{1}')"
                                            .format(artist, validated_artist))
                     except LastfmCache.LastfmCacheError as e:
-                        violations.add(str(e))
+                        pass
+                        #violations.add(str(e))
 
         validated_track_numbers = release.validate_track_numbers()
         if validated_track_numbers:
@@ -171,7 +172,7 @@ class ReleaseValidator:
 
         # track titles
         for filename in release.tracks:
-            correct_filename = release.tracks[filename].get_filename(release.is_VA())
+            correct_filename = release.tracks[filename].get_filename(release.is_va())
             if filename != correct_filename:
                 violations.add("Invalid filename: {0} (should be {1})".format(filename, correct_filename))
 
@@ -203,6 +204,11 @@ class ReleaseValidator:
             disc_number = track.disc_number if track.disc_number else 1
             if not track.total_tracks and validated_track_numbers.get(disc_number):
                 track.total_tracks = validated_track_numbers[disc_number]
+
+        # fill in missing disc number
+        if not release.validate_total_discs() and len(validated_track_numbers) == 1:
+            for track in release.tracks.values():
+                track.disc_number = 1
 
         # fill in missing total disc numbers
         if not release.validate_total_discs():
