@@ -1,21 +1,52 @@
+from __future__ import annotations
+
 import os
 from collections import OrderedDict
+from enum import Enum
 from typing import Dict, List, Optional
 
 from cleartag.enums.TagType import TagType
 from metafix.Track import Track
-from metafix.constants import valid_release_categories
+from metafix.constants import ReleaseCategory
 from metafix.functions import unique, lastfm_flatten_artists, get_category_fix_name, normalise_path_chars
 
 
 class Release:
 
-    def __init__(self, tracks: Dict[str, Track], is_VA_manual:bool = None):
+    def __init__(self, tracks: Dict[str, Track], manual_category: ReleaseCategory = None):
         self.tracks = tracks
-        self.is_VA_manual = is_VA_manual
+        self.category = manual_category
+        self.guess_category()
 
     def __eq__(self, other):
         return self.tracks == other.tracks
+
+    def guess_category(self) -> None:
+        if self.category:
+            return
+
+        # clean release name, and category
+        _, self.category = get_category_fix_name(self)
+
+        # extract additional artists
+        additional_artists = []
+        for track in self.tracks.values():
+            for artist in track.artists:
+                if artist not in self.tracks[next(iter(self.tracks))].release_artists:
+                    additional_artists.append(artist)
+
+        if len(self.tracks) < 4 and len(unique(additional_artists)) == 1:
+            self.category = ReleaseCategory.SINGLE
+        elif len(self.tracks) < 6 and len(unique(additional_artists)) == 1:
+            self.category = ReleaseCategory.EP
+        elif len(unique(additional_artists)) > len(self.tracks) / 2:
+            self.category = ReleaseCategory.COMPILATION
+        else:
+            self.category = ReleaseCategory.ALBUM
+
+    def is_va(self):
+        return self.category in {ReleaseCategory.COMPILATION, ReleaseCategory.MIX, ReleaseCategory.MIXTAPE,
+                                 ReleaseCategory.SOUNDTRACK}
 
     def get_release_codec_setting(self, short=True) -> str:
 
@@ -54,38 +85,18 @@ class Release:
         else:
             return "{0}{1}".format(prefix_str, codec_settings[0])
 
-    def is_VA(self) -> bool:
-        if self.is_VA_manual != None:
-            return self.is_VA_manual
 
-        # extract additional artists
-        additional_artists = []
-        for track in self.tracks.values():
-            for artist in track.artists:
-                if artist not in self.tracks[next(iter(self.tracks))].release_artists:
-                    additional_artists.append(artist)
+    def get_folder_name(self, codec_short: bool = True, group_by_category: bool = False, group_by_artist: bool = False,
+                        manual_release_source: str = ""):
 
-        # is this a VA album?
-        return len(unique(additional_artists)) > len(self.tracks) / 2
-
-
-    def get_folder_name(self, is_VA:bool = None, codec_short:bool = True, group_by_category: bool = False,
-                        group_by_artist:bool = False, manual_release_category: str = None,
-                        manual_release_source:str = ""):
-
-        if is_VA is None:
-            is_VA = self.is_VA()
+        assert self.validate_release_date(), "Release date validation failed"
+        assert self.validate_release_title(), "Release title validation failed"
+        assert self.validate_release_artists(), "Release artists validation failed"
 
         track1 = self.tracks[next(iter(self.tracks))]
 
         # clean release name, and category
-        release_name, release_category = get_category_fix_name(track1.release_title,
-                                                                 len(self.tracks), is_VA)
-
-        valid_release_categories_lower = [x.lower() for x in valid_release_categories]
-        if manual_release_category and manual_release_category.lower() in valid_release_categories_lower:
-            release_category = valid_release_categories[
-                valid_release_categories_lower.index(manual_release_category.lower())]
+        release_name, _ = get_category_fix_name(self)
 
         release_source = "CD"
         valid_release_sources = ['CD', 'WEB', 'Vinyl']
@@ -97,22 +108,20 @@ class Release:
         year = track1.date.split("-")[0]
         release_codec = track1.get_codec_setting(short=codec_short)
 
-        release_category_str = "[{0}] ".format(release_category) \
-            if manual_release_category and release_category != "Album" else ""
+        if release_codec == "CBR" and len(self.get_cbr_bitrates()) == 1:
+            release_codec += str(int(self.get_cbr_bitrates()[0] / 1000))
+
+        release_category_str = "[{0}] ".format(self.category.value) \
+            if self.category != ReleaseCategory.ALBUM else ""
         release_source_str = "" if release_source == "CD" else "[{0}] ".format(release_source)
         artist_folder_str = "" if not group_by_artist else "{0}{1}".format(release_artist, os.path.sep)
-        category_folder_str = "" if not group_by_category else "{0}{1}".format(release_category, os.path.sep)
-
-        assert self.validate_release_date(), "Release date validation failed"
-        assert self.validate_release_title(), "Release title validation failed"
-        assert self.validate_release_artists(), "Release artists validation failed"
-
+        category_folder_str = "" if not group_by_category else "{0}{1}".format(self.category.value, os.path.sep)
 
         # folder name
-        if not is_VA:
+        if not self.is_va():
             return normalise_path_chars(
-            "{category_folder_str}{artist_folder_str}{release_artist} - {year} - {release_name} "
-            "{release_category_str}{release_source_str}[{release_codec}]"
+                "{category_folder_str}{artist_folder_str}{release_artist} - {year} - {release_name} "
+                "{release_category_str}{release_source_str}[{release_codec}]"
                 .format(category_folder_str=category_folder_str,
                         artist_folder_str=artist_folder_str,
                         release_artist=release_artist,
@@ -126,15 +135,23 @@ class Release:
             return normalise_path_chars(
                 "{category_folder_str}{artist_folder_str}VA - {release_name} - {year} - {release_artist} "
                 "{release_category_str}{release_source_str}[{release_codec}]"
-                    .format(category_folder_str=category_folder_str,
-                            artist_folder_str=artist_folder_str,
-                            release_name=release_name,
-                            year=year,
-                            release_artist=release_artist,
-                            release_category_str=release_category_str,
-                            release_codec=release_codec,
-                            release_source_str=release_source_str))
+                .format(category_folder_str=category_folder_str,
+                        artist_folder_str=artist_folder_str,
+                        release_name=release_name,
+                        year=year,
+                        release_artist=release_artist,
+                        release_category_str=release_category_str,
+                        release_codec=release_codec,
+                        release_source_str=release_source_str))
 
+    # return true if the folder name can be validated
+    def can_validate_folder_name(self) -> bool:
+        return self.validate_release_date() is not None and self.validate_release_title() is not None \
+               and self.validate_release_artists() is not None
+
+    # return the folder name if valid
+    def validate_folder_name(self, folder_name: str) -> Optional[str]:
+        return folder_name if self.can_validate_folder_name() and self.get_folder_name() == folder_name else None
 
     # return release date if consistent
     def validate_release_date(self) -> str:
@@ -216,7 +233,6 @@ class Release:
 
         return result
 
-
     # return an invalid sequence of total tracks tags
     def validate_total_tracks(self) -> List[int]:
         violating_discs = []
@@ -274,7 +290,7 @@ class Release:
     def get_codecs(self) -> List[str]:
         return unique([track.get_codec_setting(short=True) for track in self.tracks.values()])
 
-    def get_cbr_bitrates(self) -> List[str]:
+    def get_cbr_bitrates(self) -> List[int]:
         if (self.get_codecs()[0] if len(self.get_codecs()) else "") == "CBR":
             return unique([track.stream_info.bitrate for track in self.tracks.values()])
         else:

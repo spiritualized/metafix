@@ -1,9 +1,9 @@
 import os
 import re
 from collections import OrderedDict
-from typing import List, Dict
+from typing import List, Dict, Tuple, Optional
 
-from metafix.constants import audio_extensions
+from metafix.constants import audio_extensions, ReleaseCategory
 
 
 def unique(seq: List):
@@ -75,31 +75,25 @@ def split_release_title(release_title_full):
     return release_title, release_edition
 
 
-def get_category_fix_name(release_name, num_tracks, is_VA):
-    clean_name = re.sub(r"[\[{( ]{1}web[\]})]?", "", release_name, flags=re.I)
+def get_category_fix_name(release: "Release") -> Tuple[str, Optional[ReleaseCategory]]:
+    clean_name = re.sub(r"[\[{( ]{1}web[\]})]?", "",
+                        release.tracks[next(iter(release.tracks))].release_title, flags=re.I)
 
     lower_name = clean_name.lower()
 
     if lower_name.endswith(" ep"):
-        return clean_name[0:-3].strip(), "EP"
+        return clean_name[0:-3].strip(), ReleaseCategory.EP
     elif lower_name.endswith("(ep)") or lower_name.endswith("[ep]") or lower_name.endswith("{ep}"):
-        return clean_name[0:-4].strip(), "EP"
+        return clean_name[0:-4].strip(), ReleaseCategory.EP
     elif lower_name.endswith(" single"):
-        return clean_name[0:-7].strip(), "Single"
+        return clean_name[0:-7].strip(), ReleaseCategory.SINGLE
     elif lower_name.endswith(" cds"):
-        return clean_name[0:-4].strip(), "Single"
+        return clean_name[0:-4].strip(), ReleaseCategory.SINGLE
     elif lower_name.endswith(" (cds)") or lower_name.endswith("(cds)") or lower_name.endswith("{cds}"):
-        return clean_name[0:-6].strip(), "Single"
+        return clean_name[0:-6].strip(), ReleaseCategory.SINGLE
 
-    release_category = "Album"
-    if is_VA:
-        release_category = "Compilation"
-    elif num_tracks < 4:
-        release_category = "Single"
-    elif num_tracks < 6:
-        release_category = "EP"
+    return clean_name, None
 
-    return clean_name, release_category
 
 def tag_filter(tag: str, ignore_substrings: List[str], capitalize:bool):
 
