@@ -6,9 +6,10 @@ from enum import Enum
 from typing import Dict, List, Optional
 
 from cleartag.enums.TagType import TagType
+from cleartag.functions import normalize_path_chars
 from metafix.Track import Track
 from metafix.constants import ReleaseCategory
-from metafix.functions import unique, flatten_artists, get_category_fix_name, normalise_path_chars
+from metafix.functions import unique, flatten_artists, get_category_fix_name
 
 
 class Release:
@@ -20,6 +21,11 @@ class Release:
 
     def __eq__(self, other):
         return self.tracks == other.tracks
+
+    def __repr__(self):
+        track0 = self.tracks[next(iter(self.tracks))]
+        return "{0} - {1} - {2}"\
+            .format(flatten_artists(track0.release_artists), track0.date.split("-")[0], track0.release_title)
 
     def guess_category(self) -> None:
         if self.category:
@@ -119,7 +125,7 @@ class Release:
 
         # folder name
         if self.category in {ReleaseCategory.COMPILATION}:
-            return normalise_path_chars(
+            return normalize_path_chars(
                 "{category_folder_str}{artist_folder_str}VA - {release_name} - {year} - {release_artist} "
                 "{release_category_str}{release_source_str}[{release_codec}]"
                 .format(category_folder_str=category_folder_str,
@@ -133,7 +139,7 @@ class Release:
 
         elif self.category in {ReleaseCategory.MIX, ReleaseCategory.MIXTAPE, ReleaseCategory.GAME_SOUNDTRACK,
                                ReleaseCategory.SOUNDTRACK}:
-            return normalise_path_chars(
+            return normalize_path_chars(
                 "{category_folder_str}{artist_folder_str}{release_name} - {year} - {release_artist} "
                 "{release_category_str}{release_source_str}[{release_codec}]"
                 .format(category_folder_str=category_folder_str,
@@ -150,7 +156,7 @@ class Release:
                      ReleaseCategory.CONCERT_RECORDING, ReleaseCategory.DEMO, ReleaseCategory.EP,
                      ReleaseCategory.INTERVIEW, ReleaseCategory.LIVE_ALBUM, ReleaseCategory.REMIX,
                      ReleaseCategory.SINGLE, ReleaseCategory.UNKNOWN}:"""
-            return normalise_path_chars(
+            return normalize_path_chars(
                 "{category_folder_str}{artist_folder_str}{release_artist} - {year} - {release_name} "
                 "{release_category_str}{release_source_str}[{release_codec}]"
                 .format(category_folder_str=category_folder_str,

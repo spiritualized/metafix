@@ -1,4 +1,5 @@
 import copy
+import logging
 from collections import OrderedDict
 from typing import List
 
@@ -72,13 +73,17 @@ class ReleaseValidator:
         if self.lastfm and len(release_artists) == 1:
             validated_release_artists = []
             for artist in release_artists:
-                validated_release_artist = self.lastfm.get_artist(artist.strip()).artist_name
+                try:
+                    validated_release_artist = self.lastfm.get_artist(artist.strip()).artist_name
 
-                if validated_release_artist != artist:
-                    violations.add(
-                        "Incorrectly spelled Album/Release Artist '{0}' (should be '{1}')".format(
-                            artist, validated_release_artist))
-                validated_release_artists.append(validated_release_artist)
+                    if validated_release_artist != artist:
+                        violations.add(
+                            "Incorrectly spelled Album/Release Artist '{0}' (should be '{1}')".format(
+                                artist, validated_release_artist))
+                    validated_release_artists.append(validated_release_artist)
+                except LastfmCache.ArtistNotFoundError:
+                    violations.add("Lookup failed of release artist '{release_artist}'"
+                                   .format(release_artist=artist.strip()))
 
         # release title
         release_title = release.validate_release_title()
@@ -91,48 +96,55 @@ class ReleaseValidator:
             release_title, _ = split_release_title(normalize_str(release_title))
 
             flattened_artist = flatten_artists(validated_release_artists)
-            lastfm_release = self.lastfm.get_release(flattened_artist, release_title)
+            lastfm_release = None
 
-            if lastfm_release.release_name != release_title:
-                # and lastfm_release.release_name.lower() != release_title.lower() \
-                # and not any(x.isupper() for x in release_title):
-                violations.add("Incorrectly spelled Album/Release name '{0}' (should be '{1}')"
-                               .format(release_title, lastfm_release.release_name))
+            try:
+                lastfm_release = self.lastfm.get_release(flattened_artist, release_title)
+            except LastfmCache.ReleaseNotFoundError as e:
+                logging.getLogger(__name__).error(e)
+                pass
 
-            # dates
-            if lastfm_release.release_date:
-                date = next(iter(release.tracks.values())).date
-                if lastfm_release.release_date != date and len(lastfm_release.release_date) >= len(date):
-                    violations.add("Incorrect Release Date '{0}' (should be '{1}')"
-                                   .format(date, lastfm_release.release_date))
+            if lastfm_release:
+                if lastfm_release.release_name != release_title:
+                    # and lastfm_release.release_name.lower() != release_title.lower() \
+                    # and not any(x.isupper() for x in release_title):
+                    violations.add("Incorrectly spelled Album/Release name '{0}' (should be '{1}')"
+                                   .format(release_title, lastfm_release.release_name))
 
-            # tags/genres (only fail if 0-1 genres - i.e. lastfm tags have never been applied)
-            release_genres = release.validate_genres()
-            lastfm_tags = self.__get_lastfm_tags(release_title, validated_release_artists)
-            if len(release_genres) < 2 <= len(lastfm_tags):
-                violations.add("Bad release genres: [{0}] (should be [{1}])"
-                               .format(", ".join(release_genres), ", ".join(lastfm_tags)))
+                # dates
+                if lastfm_release.release_date:
+                    date = next(iter(release.tracks.values())).date
+                    if lastfm_release.release_date != date and len(lastfm_release.release_date) >= len(date):
+                        violations.add("Incorrect Release Date '{0}' (should be '{1}')"
+                                       .format(date, lastfm_release.release_date))
 
-            # match and validate track titles (intersection only)
-            for track in release.tracks.values():
-                if track.track_number in lastfm_release.tracks:
-                    lastfm_title = normalize_track_title(track.track_title)
-                    if track.track_title.lower() != lastfm_title.lower():
-                        violations.add(
-                            "Incorrect track title '{0}' should be: '{1}'".format(track.track_title,
-                                                                                  lastfm_title))
+                # tags/genres (only fail if 0-1 genres - i.e. lastfm tags have never been applied)
+                release_genres = release.validate_genres()
+                lastfm_tags = self.__get_lastfm_tags(release_title, validated_release_artists)
+                if len(release_genres) < 2 <= len(lastfm_tags):
+                    violations.add("Bad release genres: [{0}] (should be [{1}])"
+                                   .format(", ".join(release_genres), ", ".join(lastfm_tags)))
 
-            # track artists
-            for track in release.tracks.values():
-                for artist in track.artists:
-                    try:
-                        validated_artist = self.lastfm.get_artist(normalize_str(artist)).artist_name
-                        if validated_artist != artist:
-                            violations.add("Incorrectly spelled Track Artist '{0}' (should be '{1}')"
-                                           .format(artist, validated_artist))
-                    except LastfmCache.LastfmCacheError as e:
-                        pass
-                        #violations.add(str(e))
+                # match and validate track titles (intersection only)
+                for track in release.tracks.values():
+                    if track.track_number in lastfm_release.tracks:
+                        lastfm_title = normalize_track_title(track.track_title)
+                        if track.track_title.lower() != lastfm_title.lower():
+                            violations.add(
+                                "Incorrect track title '{0}' should be: '{1}'".format(track.track_title,
+                                                                                      lastfm_title))
+
+                # track artists
+                for track in release.tracks.values():
+                    for artist in track.artists:
+                        try:
+                            validated_artist = self.lastfm.get_artist(normalize_str(artist)).artist_name
+                            if validated_artist != artist:
+                                violations.add("Incorrectly spelled Track Artist '{0}' (should be '{1}')"
+                                               .format(artist, validated_artist))
+                        except LastfmCache.ArtistNotFoundError:  # as e:
+                            pass
+                            # violations.add(str(e))
 
         validated_track_numbers = release.validate_track_numbers()
         if validated_track_numbers:
@@ -174,7 +186,7 @@ class ReleaseValidator:
         for filename in release.tracks:
             correct_filename = release.tracks[filename].get_filename(release.is_va())
             if filename != correct_filename:
-                violations.add("Invalid filename: {0} (should be {1})".format(filename, correct_filename))
+                violations.add("Invalid filename: {0} - should be '{1}'".format(filename, correct_filename))
 
         return list(violations)
 
@@ -222,7 +234,10 @@ class ReleaseValidator:
         validated_release_artists = []
         if self.lastfm and release_artists:
             for artist in release_artists:
-                validated_release_artists.append(self.lastfm.get_artist(artist).artist_name)
+                try:
+                    validated_release_artists.append(self.lastfm.get_artist(artist).artist_name)
+                except LastfmCache.ArtistNotFoundError:
+                    pass
 
             # update release artists for all tracks, if all were validated
             if len(validated_release_artists) == len(release_artists):
@@ -238,55 +253,64 @@ class ReleaseValidator:
             release_title, release_edition = split_release_title(normalize_str(release_title))
 
             flattened_artist = flatten_artists(validated_release_artists)
-            lastfm_release = self.lastfm.get_release(flattened_artist, release_title)
 
-            if lastfm_release.release_name != release_title:
-                # and lastfm_release.release_name.lower() != release_title.lower() \
-                # and not any(x.isupper() for x in release_title):
-                release_title_full = lastfm_release.release_name
-                if release_edition:
-                    release_title_full = "{0} {1}".format(lastfm_release.release_name, release_edition)
+            lastfm_release = None
+            try:
+                lastfm_release = self.lastfm.get_release(flattened_artist, release_title)
+            except LastfmCache.ReleaseNotFoundError as e:
+                logging.getLogger(__name__).error(e)
+                pass
 
+            if lastfm_release:
+                if lastfm_release.release_name != release_title:
+                    # and lastfm_release.release_name.lower() != release_title.lower() \
+                    # and not any(x.isupper() for x in release_title):
+                    release_title_full = lastfm_release.release_name
+                    if release_edition:
+                        release_title_full = "{0} {1}".format(lastfm_release.release_name, release_edition)
+
+                    for track in release.tracks.values():
+                        track.release_title = release_title_full
+
+                # dates
+                if lastfm_release.release_date:
+                    for track in release.tracks.values():
+                        if lastfm_release.release_date != track.date \
+                                and len(lastfm_release.release_date) >= len(track.date):
+                            track.date = lastfm_release.release_date
+
+                # tags/genres (only fail if 0-1 genres - i.e. lastfm tags have never been applied)
+                release_genres = release.validate_genres()
+                lastfm_tags = self.__get_lastfm_tags(release_title, validated_release_artists)
+                if len(release_genres) < 2 <= len(lastfm_tags):
+                    for track in release.tracks.values():
+                        track.genres = lastfm_tags
+
+                # match and validate track titles (intersection only)
                 for track in release.tracks.values():
-                    track.release_title = release_title_full
+                    if track.track_number in lastfm_release.tracks:
+                        lastfm_title = normalize_track_title(lastfm_release.tracks[track.track_number].track_name)
+                        # if there is a case insensitive mismatch
+                        if track.track_title.lower() != lastfm_title.lower():
+                            track.track_title = lastfm_title
 
-            # dates
-            if lastfm_release.release_date:
+                        # case insensitive match, tag version has no capital letters
+                        elif track.track_title.lower() == lastfm_title.lower() \
+                            and track.track_title.lower() == track.track_title:
+                            track.track_title = lastfm_title
+
+                # track artists
                 for track in release.tracks.values():
-                    if lastfm_release.release_date != track.date \
-                            and len(lastfm_release.release_date) >= len(track.date):
-                        track.date = lastfm_release.release_date
-
-            # tags/genres (only fail if 0-1 genres - i.e. lastfm tags have never been applied)
-            release_genres = release.validate_genres()
-            lastfm_tags = self.__get_lastfm_tags(release_title, validated_release_artists)
-            if len(release_genres) < 2 <= len(lastfm_tags):
-                for track in release.tracks.values():
-                    track.genres = lastfm_tags
-
-            # match and validate track titles (intersection only)
-            for track in release.tracks.values():
-                if track.track_number in lastfm_release.tracks:
-                    lastfm_title = normalize_track_title(lastfm_release.tracks[track.track_number].track_name)
-                    # if there is a case insensitive mismatch
-                    if track.track_title.lower() != lastfm_title.lower():
-                        track.track_title = lastfm_title
-
-                    # case insensitive match, tag version has no capital letters
-                    elif track.track_title.lower() == lastfm_title.lower() \
-                        and track.track_title.lower() == track.track_title:
-                        track.track_title = lastfm_title
-
-            # track artists
-            for track in release.tracks.values():
-                validated_artists = []
-                for artist in track.artists:
-                    try:
-                        validated_artists.append(self.lastfm.get_artist(artist).artist_name)
-                    except LastfmCache.LastfmCacheError:
-                        pass
-                if len(validated_artists) == len(track.artists):
-                    track.artists = validated_artists
+                    validated_artists = []
+                    for artist in track.artists:
+                        try:
+                            validated_artists.append(self.lastfm.get_artist(artist).artist_name)
+                        except LastfmCache.LastfmCacheError:
+                            pass
+                        except AttributeError:
+                            pass
+                    if len(validated_artists) == len(track.artists):
+                        track.artists = validated_artists
 
         return release
 
@@ -297,12 +321,13 @@ class ReleaseValidator:
 
         lastfm_tags = [x for x in tag_filter_all(lastfm_release.tags, release_artists + [release_title], True)]
         if not lastfm_tags:
-            artists_tags = [self.lastfm.get_artist(artist).tags for artist in release_artists]
+            filtered_artists = [x for x in release_artists if x.lower() not in ["various artist", "various artists", "va"]]
+            artists_tags = [self.lastfm.get_artist(artist).tags for artist in filtered_artists]
             weighted_tags = OrderedDict()
             for artist_tags in artists_tags:
                 for tag in artist_tags:
                     if tag not in weighted_tags or (tag in weighted_tags and weighted_tags[tag] < artist_tags[tag]):
                         weighted_tags[tag] = artist_tags[tag]
-            lastfm_tags = [x for x in tag_filter_all(weighted_tags, release_artists + [release_title], True)]
+            lastfm_tags = [x for x in tag_filter_all(weighted_tags, filtered_artists + [release_title], True)]
 
         return [x for x in lastfm_tags]

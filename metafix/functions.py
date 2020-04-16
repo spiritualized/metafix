@@ -42,20 +42,6 @@ def normalize_str(music_str):
     return music_str
 
 
-def normalise_path_chars(str_in):
-    tmp = str_in
-
-    replacements = {
-        ':': '：',
-        '/': '∕'
-    }
-
-    for x in replacements:
-        tmp = tmp.replace(x, replacements[x])
-
-    return tmp
-
-
 def flatten_artists(artists: List[str]) -> str:
 
     if len(artists) == 1:
@@ -98,7 +84,8 @@ def get_category_fix_name(release: "Release") -> Tuple[str, Optional[ReleaseCate
     return clean_name, None
 
 
-def tag_filter(tag: str, ignore_substrings: List[str], capitalize: bool):
+def tag_filter(tag: str, ignore_substrings: List[str], capitalize: bool) -> Optional[str]:
+    """Return none for a bad tag, otherwise return a cleaned up version of the tag"""
 
     for curr_ignore in ignore_substrings:
         if tag.lower() in curr_ignore.lower() or curr_ignore.lower() in tag.lower():
@@ -166,8 +153,8 @@ def tag_filter(tag: str, ignore_substrings: List[str], capitalize: bool):
 
     tag_remap = {}
     for dest_tag in tag_reverse_map:
-        for tag in tag_reverse_map[dest_tag]:
-            tag_remap[tag] = dest_tag
+        for curr_tag in tag_reverse_map[dest_tag]:
+            tag_remap[curr_tag] = dest_tag
 
     if tag in tag_remap:
         tag = tag_remap[tag]
