@@ -7,7 +7,7 @@ from ordered_set import OrderedSet
 
 from metafix.Release import Release
 from metafix.Track import Track
-from metafix.functions import normalize_str, lastfm_flatten_artists, normalize_track_title, split_release_title, \
+from metafix.functions import normalize_str, flatten_artists, normalize_track_title, split_release_title, \
     tag_filter_all, extract_track_disc
 
 
@@ -90,7 +90,7 @@ class ReleaseValidator:
             # extract (edition info) from release titles
             release_title, _ = split_release_title(normalize_str(release_title))
 
-            flattened_artist = lastfm_flatten_artists(validated_release_artists)
+            flattened_artist = flatten_artists(validated_release_artists)
             lastfm_release = self.lastfm.get_release(flattened_artist, release_title)
 
             if lastfm_release.release_name != release_title:
@@ -237,7 +237,7 @@ class ReleaseValidator:
             # extract (edition info) from release titles
             release_title, release_edition = split_release_title(normalize_str(release_title))
 
-            flattened_artist = lastfm_flatten_artists(validated_release_artists)
+            flattened_artist = flatten_artists(validated_release_artists)
             lastfm_release = self.lastfm.get_release(flattened_artist, release_title)
 
             if lastfm_release.release_name != release_title:
@@ -292,7 +292,7 @@ class ReleaseValidator:
 
     # tags/genres
     def __get_lastfm_tags(self, release_title: str, release_artists: List[str]):
-        flattened_artist = lastfm_flatten_artists(release_artists)
+        flattened_artist = flatten_artists(release_artists)
         lastfm_release = self.lastfm.get_release(flattened_artist, release_title)
 
         lastfm_tags = [x for x in tag_filter_all(lastfm_release.tags, release_artists + [release_title], True)]
