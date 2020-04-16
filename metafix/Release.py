@@ -8,7 +8,7 @@ from typing import Dict, List, Optional
 from cleartag.enums.TagType import TagType
 from metafix.Track import Track
 from metafix.constants import ReleaseCategory
-from metafix.functions import unique, lastfm_flatten_artists, get_category_fix_name, normalise_path_chars
+from metafix.functions import unique, flatten_artists, get_category_fix_name, normalise_path_chars
 
 
 class Release:
@@ -104,7 +104,7 @@ class Release:
         if manual_release_source and manual_release_source.lower() in valid_release_sources_lower:
             release_source = valid_release_sources[valid_release_sources_lower.index(manual_release_source.lower())]
 
-        release_artist = lastfm_flatten_artists(track1.release_artists)
+        release_artist = flatten_artists(track1.release_artists)
         year = track1.date.split("-")[0]
         release_codec = track1.get_codec_setting(short=codec_short)
 
@@ -118,20 +118,7 @@ class Release:
         category_folder_str = "" if not group_by_category else "{0}{1}".format(self.category.value, os.path.sep)
 
         # folder name
-        if not self.is_va():
-            return normalise_path_chars(
-                "{category_folder_str}{artist_folder_str}{release_artist} - {year} - {release_name} "
-                "{release_category_str}{release_source_str}[{release_codec}]"
-                .format(category_folder_str=category_folder_str,
-                        artist_folder_str=artist_folder_str,
-                        release_artist=release_artist,
-                        year=year,
-                        release_name=release_name,
-                        release_category_str=release_category_str,
-                        release_source_str=release_source_str,
-                        release_codec=release_codec))
-
-        else:
+        if self.category in {ReleaseCategory.COMPILATION}:
             return normalise_path_chars(
                 "{category_folder_str}{artist_folder_str}VA - {release_name} - {year} - {release_artist} "
                 "{release_category_str}{release_source_str}[{release_codec}]"
@@ -143,6 +130,37 @@ class Release:
                         release_category_str=release_category_str,
                         release_codec=release_codec,
                         release_source_str=release_source_str))
+
+        elif self.category in {ReleaseCategory.MIX, ReleaseCategory.MIXTAPE, ReleaseCategory.GAME_SOUNDTRACK,
+                               ReleaseCategory.SOUNDTRACK}:
+            return normalise_path_chars(
+                "{category_folder_str}{artist_folder_str}{release_name} - {year} - {release_artist} "
+                "{release_category_str}{release_source_str}[{release_codec}]"
+                .format(category_folder_str=category_folder_str,
+                        artist_folder_str=artist_folder_str,
+                        release_name=release_name,
+                        year=year,
+                        release_artist=release_artist,
+                        release_category_str=release_category_str,
+                        release_codec=release_codec,
+                        release_source_str=release_source_str))
+
+        else:
+            """self.category in {ReleaseCategory.ALBUM, ReleaseCategory.ANTHOLOGY, ReleaseCategory.BOOTLEG,
+                     ReleaseCategory.CONCERT_RECORDING, ReleaseCategory.DEMO, ReleaseCategory.EP,
+                     ReleaseCategory.INTERVIEW, ReleaseCategory.LIVE_ALBUM, ReleaseCategory.REMIX,
+                     ReleaseCategory.SINGLE, ReleaseCategory.UNKNOWN}:"""
+            return normalise_path_chars(
+                "{category_folder_str}{artist_folder_str}{release_artist} - {year} - {release_name} "
+                "{release_category_str}{release_source_str}[{release_codec}]"
+                .format(category_folder_str=category_folder_str,
+                    artist_folder_str=artist_folder_str,
+                    release_artist=release_artist,
+                    year=year,
+                    release_name=release_name,
+                    release_category_str=release_category_str,
+                    release_source_str=release_source_str,
+                    release_codec=release_codec))
 
     # return true if the folder name can be validated
     def can_validate_folder_name(self) -> bool:

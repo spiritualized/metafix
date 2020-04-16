@@ -9,6 +9,7 @@ class ReleaseCategory(Enum):
     CONCERT_RECORDING = 'Concert Recording'
     DEMO = 'Demo'
     EP = 'EP'
+    GAME_SOUNDTRACK = 'Game Soundtrack'
     INTERVIEW = 'Interview'
     LIVE_ALBUM = 'Live Album'
     MIX = 'Mix'

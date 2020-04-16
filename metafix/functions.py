@@ -21,24 +21,26 @@ def unique(seq: List):
                 out_items.append(item)
     return out_items
 
-def normalize_track_title(str):
-    return normalize_str(str)
+
+def normalize_track_title(str_in):
+    return normalize_str(str_in)
 
 
-def normalize_artist_name(str):
-    return normalize_str(str)
+def normalize_artist_name(str_in):
+    return normalize_str(str_in)
 
 
 def normalize_str(music_str):
     if not music_str:
         return ""
     music_str = re.sub("(?i) feat(.)?( )?", " feat. ", music_str)
-    music_str = re.sub("(?i)\(feat(.)?( )?", "(feat. ", music_str)
+    music_str = re.sub("(?i)\\(feat(.)?( )?", "(feat. ", music_str)
     music_str = re.sub("(?i)( )?vs(.)?( )?", " vs. ", music_str)
     music_str = ' '.join(music_str.replace("/", " / ").split())
     music_str = music_str.strip()
 
     return music_str
+
 
 def normalise_path_chars(str_in):
     tmp = str_in
@@ -53,7 +55,8 @@ def normalise_path_chars(str_in):
 
     return tmp
 
-def lastfm_flatten_artists(artists: List[str]) -> str:
+
+def flatten_artists(artists: List[str]) -> str:
 
     if len(artists) == 1:
         return artists[0]
@@ -67,7 +70,7 @@ def split_release_title(release_title_full):
     release_title = release_title_full
     release_edition = ""
 
-    edition_match = re.search(r"([({[]{1}[\w\-_ ]+[)}\]]{1})$", release_title_full)
+    edition_match = re.search(r"([({[][\w\-_ ]+[)}\]])$", release_title_full)
     if edition_match:
         release_edition = edition_match.groups()[0]
         release_title = release_title_full.replace(release_edition, "").strip()
@@ -76,7 +79,7 @@ def split_release_title(release_title_full):
 
 
 def get_category_fix_name(release: "Release") -> Tuple[str, Optional[ReleaseCategory]]:
-    clean_name = re.sub(r"[\[{( ]{1}web[\]})]?", "",
+    clean_name = re.sub(r"[\[{( ]web[\]})]?", "",
                         release.tracks[next(iter(release.tracks))].release_title, flags=re.I)
 
     lower_name = clean_name.lower()
@@ -95,7 +98,7 @@ def get_category_fix_name(release: "Release") -> Tuple[str, Optional[ReleaseCate
     return clean_name, None
 
 
-def tag_filter(tag: str, ignore_substrings: List[str], capitalize:bool):
+def tag_filter(tag: str, ignore_substrings: List[str], capitalize: bool):
 
     for curr_ignore in ignore_substrings:
         if tag.lower() in curr_ignore.lower() or curr_ignore.lower() in tag.lower():
@@ -125,31 +128,46 @@ def tag_filter(tag: str, ignore_substrings: List[str], capitalize:bool):
         if substring in tag:
             return None
 
-    tag_remap = {
-        'crossover': 'fusion',
-        'drum \'n bass': 'drum and bass',
-        'drum \'n\' bass': 'drum and bass',
-        'drum & bass': 'drum and bass',
-        'drum n bass': 'drum and bass',
-        'drum n\' bass': 'drum and bass',
-        'drum\'n bass': 'drum and bass',
-        'drum\'n\'bass': 'drum and bass',
-        'drum&bass': 'drum and bass',
-        'drumandbass': 'drum and bass',
-        'drumm and bass': 'drum and bass',
-        'drumm n bass': 'drum and bass',
-        'drumn and bass': 'drum and bass',
-        'drumnbass': 'drum and bass',
-        'drums and base': 'drum and bass',
-        'drums and bass': 'drum and bass',
-        'dnb': 'drum and bass',
-        'd&b': 'drum and bass',
-        'd\'n\'b': 'drum and bass',
-        'hip-hop': 'hip hop',
-        'hiphop': 'hip hop',
-        'triphop': 'trip-hop',
-        'trip hop': 'trip-hop',
+    tag_reverse_map = {
+        'fusion': {
+            'crossover'
+        },
+
+        'drum and bass': {
+            'drum \'n bass',
+            'drum \'n\' bass',
+            'drum & bass',
+            'drum n bass',
+            'drum n\' bass',
+            'drum\'n bass',
+            'drum\'n\'bass',
+            'drum&bass',
+            'drumandbass',
+            'drumm and bass',
+            'drumm n bass',
+            'drumn and bass',
+            'drumnbass',
+            'drums and base',
+            'drums and bass',
+            'dnb',
+            'd&b',
+        },
+
+        'hip hop': {
+            'hip-hop',
+            'hiphop',
+        },
+
+        'trip-hop': {
+            'triphop',
+            'trip hop',
+        }
     }
+
+    tag_remap = {}
+    for dest_tag in tag_reverse_map:
+        for tag in tag_reverse_map[dest_tag]:
+            tag_remap[tag] = dest_tag
 
     if tag in tag_remap:
         tag = tag_remap[tag]
@@ -181,8 +199,10 @@ def tag_filter_all(tags: Dict[str, int], ignore_substrings: List[str], capitaliz
 
     return accepted_tags
 
+
 non_capitalized = ["a", "an", "the", "and", "but", "or", "for", "nor", "in", "to", "at" "on", "by", "from", "nor",
                    "yet", "so"]
+
 
 def capitalize_tag(tag_str):
     words = [x.capitalize() if x not in non_capitalized else x for x in tag_str.split(" ")]
@@ -190,6 +210,7 @@ def capitalize_tag(tag_str):
         words[0] = words[0].capitalize()
 
     return " ".join(words)
+
 
 def extract_track_disc(filename):
     track = None
@@ -202,6 +223,7 @@ def extract_track_disc(filename):
         disc = int(match[0][:-2])
 
     return track, disc
+
 
 def has_audio_extension(path):
     return os.path.splitext(path)[1].lower() in audio_extensions
