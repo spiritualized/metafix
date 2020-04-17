@@ -51,8 +51,8 @@ class Release:
             self.category = ReleaseCategory.ALBUM
 
     def is_va(self):
-        return self.category in {ReleaseCategory.COMPILATION, ReleaseCategory.MIX, ReleaseCategory.MIXTAPE,
-                                 ReleaseCategory.SOUNDTRACK}
+        return self.category in {ReleaseCategory.COMPILATION, ReleaseCategory.GAME_SOUNDTRACK, ReleaseCategory.MIX,
+                                 ReleaseCategory.MIXTAPE, ReleaseCategory.SOUNDTRACK}
 
     def get_release_codec_setting(self, short=True) -> str:
 
@@ -195,7 +195,7 @@ class Release:
     def validate_release_artists(self) -> List[str]:
         release_artists = unique([track.release_artists for track in self.tracks.values()])
         if len(release_artists) == 1:
-            return release_artists[0]
+            return unique(release_artists[0])
         return []
 
     # return release title if consistent

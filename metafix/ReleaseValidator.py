@@ -105,9 +105,10 @@ class ReleaseValidator:
                 pass
 
             if lastfm_release:
-                if lastfm_release.release_name != release_title:
-                    # and lastfm_release.release_name.lower() != release_title.lower() \
-                    # and not any(x.isupper() for x in release_title):
+                # release title
+                if lastfm_release.release_name != release_title \
+                     and lastfm_release.release_name.lower() != release_title.lower() \
+                     and not any(x.isupper() for x in release_title):
                     violations.add("Incorrectly spelled Album/Release name '{0}' (should be '{1}')"
                                    .format(release_title, lastfm_release.release_name))
 
@@ -262,9 +263,10 @@ class ReleaseValidator:
                 pass
 
             if lastfm_release:
-                if lastfm_release.release_name != release_title:
-                    # and lastfm_release.release_name.lower() != release_title.lower() \
-                    # and not any(x.isupper() for x in release_title):
+                # release title
+                if lastfm_release.release_name != release_title \
+                        and lastfm_release.release_name.lower() != release_title.lower() \
+                        and not any(x.isupper() for x in release_title):
                     release_title_full = lastfm_release.release_name
                     if release_edition:
                         release_title_full = "{0} {1}".format(lastfm_release.release_name, release_edition)
@@ -304,10 +306,10 @@ class ReleaseValidator:
                     validated_artists = []
                     for artist in track.artists:
                         try:
-                            validated_artists.append(self.lastfm.get_artist(artist).artist_name)
-                        except LastfmCache.LastfmCacheError:
+                            validated_artists.append(self.lastfm.get_artist(normalize_str(artist)).artist_name)
+                        except LastfmCache.ArtistNotFoundError:
                             pass
-                        except AttributeError:
+                        except AttributeError:  # TODO remove when pylast is fixed
                             pass
                     if len(validated_artists) == len(track.artists):
                         track.artists = validated_artists
