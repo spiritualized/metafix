@@ -37,6 +37,7 @@ def normalize_str(music_str):
     music_str = re.sub("(?i)\\(feat(.)?( )?", "(feat. ", music_str)
     music_str = re.sub("(?i)( )?vs(.)?( )?", " vs. ", music_str)
     music_str = ' '.join(music_str.replace("/", " / ").split())
+    music_str = re.sub(r'(?i) ?[\[{(]?(disc|disk|cd) ?(\d{1,2})[\]})]?', "", music_str)
     music_str = music_str.strip()
 
     return music_str

@@ -9,7 +9,7 @@ from cleartag.enums.TagType import TagType
 from cleartag.functions import normalize_path_chars
 from metafix.Track import Track
 from metafix.constants import ReleaseCategory
-from metafix.functions import unique, flatten_artists, get_category_fix_name
+from metafix.functions import unique, flatten_artists, get_category_fix_name, normalize_str
 
 
 class Release:
@@ -17,6 +17,7 @@ class Release:
     def __init__(self, tracks: Dict[str, Track], manual_category: ReleaseCategory = None):
         self.tracks = tracks
         self.category = manual_category
+        self.num_violations = None
         self.guess_category()
 
     def __eq__(self, other):
@@ -24,8 +25,9 @@ class Release:
 
     def __repr__(self):
         track0 = self.tracks[next(iter(self.tracks))]
+        date = "<date not found>" if not track0.date else track0.date.split("-")[0]
         return "{0} - {1} - {2}"\
-            .format(flatten_artists(track0.release_artists), track0.date.split("-")[0], track0.release_title)
+            .format(flatten_artists(track0.release_artists), date, track0.release_title)
 
     def guess_category(self) -> None:
         if self.category:
@@ -123,8 +125,11 @@ class Release:
         artist_folder_str = "" if not group_by_artist else "{0}{1}".format(release_artist, os.path.sep)
         category_folder_str = "" if not group_by_category else "{0}{1}".format(self.category.value, os.path.sep)
 
+        title_first_categories = {ReleaseCategory.COMPILATION, ReleaseCategory.MIX, ReleaseCategory.MIXTAPE,  ReleaseCategory.GAME_SOUNDTRACK,
+                                  ReleaseCategory.SOUNDTRACK}
+
         # folder name
-        if self.category in {ReleaseCategory.COMPILATION}:
+        if group_by_category is False and self.category in title_first_categories:
             return normalize_path_chars(
                 "{category_folder_str}{artist_folder_str}VA - {release_name} - {year} - {release_artist} "
                 "{release_category_str}{release_source_str}[{release_codec}]"
@@ -137,8 +142,7 @@ class Release:
                         release_codec=release_codec,
                         release_source_str=release_source_str))
 
-        elif self.category in {ReleaseCategory.MIX, ReleaseCategory.MIXTAPE, ReleaseCategory.GAME_SOUNDTRACK,
-                               ReleaseCategory.SOUNDTRACK}:
+        elif self.category in title_first_categories:
             return normalize_path_chars(
                 "{category_folder_str}{artist_folder_str}{release_name} - {year} - {release_artist} "
                 "{release_category_str}{release_source_str}[{release_codec}]"
@@ -171,7 +175,7 @@ class Release:
     # return true if the folder name can be validated
     def can_validate_folder_name(self) -> bool:
         return self.validate_release_date() is not None and self.validate_release_title() is not None \
-               and self.validate_release_artists() is not None
+               and self.validate_release_artists() != []
 
     # return the folder name if valid
     def validate_folder_name(self, folder_name: str) -> Optional[str]:
@@ -199,9 +203,14 @@ class Release:
         return []
 
     # return release title if consistent
-    def validate_release_title(self) -> str:
+    def validate_release_title(self) -> Optional[str]:
         release_titles = unique([track.release_title for track in self.tracks.values()])
-        if len(release_titles) == 1:
+        if len(release_titles) == 1 and release_titles[0] != "":
+            return release_titles[0]
+
+        # if the release title couldn't be validated, try normalizing it
+        release_titles = unique([normalize_str(track.release_title) for track in self.tracks.values()])
+        if len(release_titles) == 1 and release_titles[0] != "":
             return release_titles[0]
 
     def __get_disc_numbers_by_track(self) -> Dict[int, List[int]]:
@@ -211,7 +220,8 @@ class Release:
             disc_num = track.disc_number or 1
             if disc_num not in track_numbers:
                 track_numbers[disc_num] = []
-            track_numbers[disc_num].append(track.track_number)
+            if track.track_number:
+                track_numbers[disc_num].append(track.track_number)
 
         for disc_num in track_numbers:
             track_numbers[disc_num] = sorted(track_numbers[disc_num])
@@ -229,7 +239,7 @@ class Release:
 
         for disc in track_numbers:
 
-            if track_numbers[disc][0] != 1:
+            if not track_numbers[disc] or track_numbers[disc][0] != 1:
                 all_tracks_present = False
 
             for i in range(0, len(track_numbers[disc]) - 1):
@@ -276,6 +286,9 @@ class Release:
     # return an invalid sequence of disc numbers
     def validate_disc_numbers(self) -> List[int]:
         track_numbers = self.__get_disc_numbers_by_track()
+        if not track_numbers:
+            return []
+
         # disc number
         disc_numbers = sorted(list(track_numbers))
         all_discs_present = disc_numbers[0] == 1
@@ -290,12 +303,14 @@ class Release:
             return disc_numbers
 
     def validate_total_discs(self) -> bool:
+        disc_numbers = sorted(list(self.__get_disc_numbers_by_track()))
         total_discs = unique([track.total_discs for track in self.tracks.values()])
-        return len(total_discs) == 1 and total_discs[0] == sorted(list(self.__get_disc_numbers_by_track()))[-1]
+        return len(total_discs) == 1 and len(disc_numbers) and total_discs[0] == disc_numbers[-1]
 
     def get_total_discs(self) -> Optional[int]:
-        disc_numbers = sorted(unique([track.disc_number for track in self.tracks.values()]))
-        if disc_numbers[0] != 1:
+        disc_numbers = sorted(unique([track.disc_number
+                                      for track in self.tracks.values() if track.disc_number is not None]))
+        if not len(disc_numbers) or disc_numbers[0] != 1:
             return None
         for x in range(len(disc_numbers) - 1):
             if disc_numbers[x] != disc_numbers[x+1] - 1:
