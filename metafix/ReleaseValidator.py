@@ -1,15 +1,19 @@
 import copy
 import logging
+import os
+import re
+import time
 from collections import OrderedDict
 from typing import List
 
+import pylast
 from lastfmcache import LastfmCache
 from ordered_set import OrderedSet
 
 from metafix.Release import Release
 from metafix.Track import Track
 from metafix.functions import normalize_str, flatten_artists, normalize_track_title, split_release_title, \
-    tag_filter_all, extract_track_disc
+    tag_filter_all, extract_track_disc, unique
 
 
 class ReleaseValidator:
@@ -102,7 +106,6 @@ class ReleaseValidator:
                 lastfm_release = self.lastfm.get_release(flattened_artist, release_title)
             except LastfmCache.ReleaseNotFoundError as e:
                 logging.getLogger(__name__).error(e)
-                pass
 
             if lastfm_release:
                 # release title
@@ -115,7 +118,8 @@ class ReleaseValidator:
                 # dates
                 if lastfm_release.release_date:
                     date = next(iter(release.tracks.values())).date
-                    if lastfm_release.release_date != date and len(lastfm_release.release_date) >= len(date):
+                    if lastfm_release.release_date != date and \
+                            (not date or len(lastfm_release.release_date) >= len(date)):
                         violations.add("Incorrect Release Date '{0}' (should be '{1}')"
                                        .format(date, lastfm_release.release_date))
 
@@ -130,7 +134,7 @@ class ReleaseValidator:
                 for track in release.tracks.values():
                     if track.track_number in lastfm_release.tracks:
                         lastfm_title = normalize_track_title(track.track_title)
-                        if track.track_title.lower() != lastfm_title.lower():
+                        if not track.track_title or track.track_title.lower() != lastfm_title.lower():
                             violations.add(
                                 "Incorrect track title '{0}' should be: '{1}'".format(track.track_title,
                                                                                       lastfm_title))
@@ -179,15 +183,17 @@ class ReleaseValidator:
         if len(release.get_codecs()) != 1:
             violations.add("Release has mismatched codecs: [{0}]".format(", ".join(release.get_codecs())))
 
-        if len(release.get_cbr_bitrates()) > 1:
+        if len(unique([int(x / 1000) for x in release.get_cbr_bitrates()])) > 1:
             violations.add("Release has a mixture of CBR bitrates: {0}"
                            .format(", ".join([str(x) for x in release.get_cbr_bitrates()])))
 
         # track titles
         for filename in release.tracks:
             correct_filename = release.tracks[filename].get_filename(release.is_va())
-            if filename != correct_filename:
+            if correct_filename and filename != correct_filename:
                 violations.add("Invalid filename: {0} - should be '{1}'".format(filename, correct_filename))
+
+        release.num_violations = len(violations)
 
         return list(violations)
 
@@ -211,6 +217,13 @@ class ReleaseValidator:
             if not release.tracks[filename].disc_number and disc_num:
                 release.tracks[filename].disc_number = disc_num
 
+        # extract missing disc numbers from folder name
+        for filename in release.tracks:
+            if not release.tracks[filename].disc_number:
+                match = re.findall(r'(?i)(disc|disk|cd) ?(\d{1,2})', os.path.split(filename)[0])
+                if match:
+                    release.tracks[filename].disc_number = int(match[0][1])
+
         # fill in missing total track numbers
         validated_track_numbers = release.get_total_tracks()
         for track in release.tracks.values():
@@ -218,7 +231,7 @@ class ReleaseValidator:
             if not track.total_tracks and validated_track_numbers.get(disc_number):
                 track.total_tracks = validated_track_numbers[disc_number]
 
-        # fill in missing disc number
+        # if disc number is missing and there appears to only be one disc, set to 1
         if not release.validate_total_discs() and len(validated_track_numbers) == 1:
             for track in release.tracks.values():
                 track.disc_number = 1
@@ -235,10 +248,15 @@ class ReleaseValidator:
         validated_release_artists = []
         if self.lastfm and release_artists:
             for artist in release_artists:
-                try:
-                    validated_release_artists.append(self.lastfm.get_artist(artist).artist_name)
-                except LastfmCache.ArtistNotFoundError:
-                    pass
+                while True:
+                    try:
+                        validated_release_artists.append(self.lastfm.get_artist(artist).artist_name)
+                        break
+                    except LastfmCache.ArtistNotFoundError:
+                        break
+                    except LastfmCache.ConnectionError:
+                        logging.getLogger(__name__).error("Connection error while retrieving artist, retrying...")
+                        time.sleep(1)
 
             # update release artists for all tracks, if all were validated
             if len(validated_release_artists) == len(release_artists):
@@ -247,6 +265,9 @@ class ReleaseValidator:
 
         # release title
         release_title = release.validate_release_title()
+        for track in release.tracks.values():
+            if track.release_title != release_title:
+                track.release_title = release_title
 
         # lastfm artist validations
         if self.lastfm and len(validated_release_artists) and release_title:
@@ -256,11 +277,19 @@ class ReleaseValidator:
             flattened_artist = flatten_artists(validated_release_artists)
 
             lastfm_release = None
-            try:
-                lastfm_release = self.lastfm.get_release(flattened_artist, release_title)
-            except LastfmCache.ReleaseNotFoundError as e:
-                logging.getLogger(__name__).error(e)
-                pass
+
+            while True:
+                try:
+                    lastfm_release = self.lastfm.get_release(flattened_artist, release_title)
+                    break
+                except LastfmCache.ConnectionError:
+                    logging.getLogger(__name__).error("Connection error while retrieving release, retrying...")
+                    time.sleep(1)
+                except LastfmCache.ReleaseNotFoundError as e:
+                    logging.getLogger(__name__).error(e)
+                    break
+                except LastfmCache.LastfmCacheError as e:
+                    logging.getLogger(__name__).error(e)
 
             if lastfm_release:
                 # release title
@@ -278,7 +307,7 @@ class ReleaseValidator:
                 if lastfm_release.release_date:
                     for track in release.tracks.values():
                         if lastfm_release.release_date != track.date \
-                                and len(lastfm_release.release_date) >= len(track.date):
+                                and (not track.date or len(lastfm_release.release_date) >= len(track.date)):
                             track.date = lastfm_release.release_date
 
                 # tags/genres (only fail if 0-1 genres - i.e. lastfm tags have never been applied)
@@ -292,8 +321,8 @@ class ReleaseValidator:
                 for track in release.tracks.values():
                     if track.track_number in lastfm_release.tracks:
                         lastfm_title = normalize_track_title(lastfm_release.tracks[track.track_number].track_name)
-                        # if there is a case insensitive mismatch
-                        if track.track_title.lower() != lastfm_title.lower():
+                        # if the track title is missing, or if there is a case insensitive mismatch
+                        if not track.track_title or track.track_title.lower() != lastfm_title.lower():
                             track.track_title = lastfm_title
 
                         # case insensitive match, tag version has no capital letters
@@ -305,12 +334,19 @@ class ReleaseValidator:
                 for track in release.tracks.values():
                     validated_artists = []
                     for artist in track.artists:
-                        try:
-                            validated_artists.append(self.lastfm.get_artist(normalize_str(artist)).artist_name)
-                        except LastfmCache.ArtistNotFoundError:
-                            pass
-                        except AttributeError:  # TODO remove when pylast is fixed
-                            pass
+                        while True:
+                            try:
+                                validated_artists.append(self.lastfm.get_artist(normalize_str(artist)).artist_name)
+                                break
+                            except LastfmCache.ConnectionError:
+                                logging.getLogger(__name__).error(
+                                    "Connection error while retrieving artist, retrying...")
+                                time.sleep(1)
+                            except LastfmCache.ArtistNotFoundError:
+                                break
+                            except AttributeError:  # TODO remove when pylast is fixed
+                                break
+
                     if len(validated_artists) == len(track.artists):
                         track.artists = validated_artists
 
