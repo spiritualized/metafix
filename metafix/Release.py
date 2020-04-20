@@ -114,8 +114,11 @@ class Release:
         year = track1.date.split("-")[0]
         release_codec = track1.get_codec_setting(short=codec_short)
 
-        if release_codec == "CBR" and len(unique([int(x/1000) for x in self.get_cbr_bitrates()])) == 1:
+        if release_codec in ["CBR", "MP3 CBR"] and len(unique([int(x/1000) for x in self.get_cbr_bitrates()])) == 1:
             release_codec += str(int(self.get_cbr_bitrates()[0] / 1000))
+
+        elif release_codec in ["VBR", "MP3 VBR"] and self.get_vbr_bitrate():
+            release_codec += str(int(self.get_vbr_bitrate() / 1000))
 
         release_category_str = "[{0}] ".format(self.category.value) \
             if self.category != ReleaseCategory.ALBUM else ""
@@ -332,3 +335,11 @@ class Release:
             return unique([track.stream_info.bitrate for track in self.tracks.values()])
         else:
             return []
+
+    def get_vbr_bitrate(self) -> Optional[float]:
+        codecs = self.get_codecs()
+        if not len(unique(codecs)) == 1 or codecs[0] != "VBR":
+            return None
+
+        return sum([track.stream_info.bitrate * track.stream_info.length for track in self.tracks.values()]) / \
+               sum([track.stream_info.length for track in self.tracks.values()])
