@@ -321,8 +321,9 @@ class ReleaseValidator:
                 for track in release.tracks.values():
                     if track.track_number in lastfm_release.tracks:
                         lastfm_title = normalize_track_title(lastfm_release.tracks[track.track_number].track_name)
-                        # if the track title is missing, or if there is a case insensitive mismatch
-                        if not track.track_title or track.track_title.lower() != lastfm_title.lower():
+                        # if the track title is missing, or if it is lowercase and there is a case insensitive match
+                        if not track.track_title or \
+                                (track.track_title.islower() and track.track_title.lower() == lastfm_title.lower()):
                             track.track_title = lastfm_title
 
                         # case insensitive match, tag version has no capital letters
