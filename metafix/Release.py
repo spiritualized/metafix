@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import os
 from collections import OrderedDict
-from enum import Enum
 from typing import Dict, List, Optional
 
 from cleartag.enums.TagType import TagType
@@ -93,7 +92,6 @@ class Release:
         else:
             return "{0}{1}".format(prefix_str, codec_settings[0])
 
-
     def get_folder_name(self, codec_short: bool = True, group_by_category: bool = False, group_by_artist: bool = False,
                         manual_release_source: str = ""):
 
@@ -125,8 +123,8 @@ class Release:
         artist_folder_str = "" if not group_by_artist else "{0}{1}".format(release_artist, os.path.sep)
         category_folder_str = "" if not group_by_category else "{0}{1}".format(self.category.value, os.path.sep)
 
-        title_first_categories = {ReleaseCategory.COMPILATION, ReleaseCategory.MIX, ReleaseCategory.MIXTAPE,  ReleaseCategory.GAME_SOUNDTRACK,
-                                  ReleaseCategory.SOUNDTRACK}
+        title_first_categories = {ReleaseCategory.COMPILATION, ReleaseCategory.MIX, ReleaseCategory.MIXTAPE,
+                                  ReleaseCategory.GAME_SOUNDTRACK, ReleaseCategory.SOUNDTRACK}
 
         # folder name
         if group_by_category is False and self.category in title_first_categories:
@@ -164,13 +162,13 @@ class Release:
                 "{category_folder_str}{artist_folder_str}{release_artist} - {year} - {release_name} "
                 "{release_category_str}{release_source_str}[{release_codec}]"
                 .format(category_folder_str=category_folder_str,
-                    artist_folder_str=artist_folder_str,
-                    release_artist=release_artist,
-                    year=year,
-                    release_name=release_name,
-                    release_category_str=release_category_str,
-                    release_source_str=release_source_str,
-                    release_codec=release_codec))
+                        artist_folder_str=artist_folder_str,
+                        release_artist=release_artist,
+                        year=year,
+                        release_name=release_name,
+                        release_category_str=release_category_str,
+                        release_source_str=release_source_str,
+                        release_codec=release_codec))
 
     # return true if the folder name can be validated
     def can_validate_folder_name(self) -> bool:
