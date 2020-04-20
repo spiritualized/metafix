@@ -114,7 +114,7 @@ class Release:
         year = track1.date.split("-")[0]
         release_codec = track1.get_codec_setting(short=codec_short)
 
-        if release_codec == "CBR" and len(self.get_cbr_bitrates()) == 1:
+        if release_codec == "CBR" and len(unique([int(x/1000) for x in self.get_cbr_bitrates()])) == 1:
             release_codec += str(int(self.get_cbr_bitrates()[0] / 1000))
 
         release_category_str = "[{0}] ".format(self.category.value) \
