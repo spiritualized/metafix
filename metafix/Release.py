@@ -92,7 +92,7 @@ class Release:
         else:
             return "{0}{1}".format(prefix_str, codec_settings[0])
 
-    def get_folder_name(self, codec_short: bool = True, group_by_category: bool = False, group_by_artist: bool = False,
+    def get_folder_name(self, codec_short: bool = True, group_by_category: bool = False,
                         manual_release_source: str = ""):
 
         assert self.validate_release_date(), "Release date validation failed"
@@ -123,8 +123,6 @@ class Release:
         release_category_str = "[{0}] ".format(self.category.value) \
             if self.category != ReleaseCategory.ALBUM else ""
         release_source_str = "" if release_source == "CD" else "[{0}] ".format(release_source)
-        artist_folder_str = "" if not group_by_artist else "{0}{1}".format(release_artist, os.path.sep)
-        category_folder_str = "" if not group_by_category else "{0}{1}".format(self.category.value, os.path.sep)
 
         title_first_categories = {ReleaseCategory.COMPILATION, ReleaseCategory.MIX, ReleaseCategory.MIXTAPE,
                                   ReleaseCategory.GAME_SOUNDTRACK, ReleaseCategory.SOUNDTRACK}
@@ -132,11 +130,9 @@ class Release:
         # folder name
         if group_by_category is False and self.category in title_first_categories:
             return normalize_path_chars(
-                "{category_folder_str}{artist_folder_str}VA - {release_name} - {year} - {release_artist} "
+                "VA - {release_name} - {year} - {release_artist} "
                 "{release_category_str}{release_source_str}[{release_codec}]"
-                .format(category_folder_str=category_folder_str,
-                        artist_folder_str=artist_folder_str,
-                        release_name=release_name,
+                .format(release_name=release_name,
                         year=year,
                         release_artist=release_artist,
                         release_category_str=release_category_str,
@@ -145,11 +141,9 @@ class Release:
 
         elif self.category in title_first_categories:
             return normalize_path_chars(
-                "{category_folder_str}{artist_folder_str}{release_name} - {year} - {release_artist} "
+                "{release_name} - {year} - {release_artist} "
                 "{release_category_str}{release_source_str}[{release_codec}]"
-                .format(category_folder_str=category_folder_str,
-                        artist_folder_str=artist_folder_str,
-                        release_name=release_name,
+                .format(release_name=release_name,
                         year=year,
                         release_artist=release_artist,
                         release_category_str=release_category_str,
@@ -162,11 +156,9 @@ class Release:
                      ReleaseCategory.INTERVIEW, ReleaseCategory.LIVE_ALBUM, ReleaseCategory.REMIX,
                      ReleaseCategory.SINGLE, ReleaseCategory.UNKNOWN}:"""
             return normalize_path_chars(
-                "{category_folder_str}{artist_folder_str}{release_artist} - {year} - {release_name} "
+                "{release_artist} - {year} - {release_name} "
                 "{release_category_str}{release_source_str}[{release_codec}]"
-                .format(category_folder_str=category_folder_str,
-                        artist_folder_str=artist_folder_str,
-                        release_artist=release_artist,
+                .format(release_artist=release_artist,
                         year=year,
                         release_name=release_name,
                         release_category_str=release_category_str,
