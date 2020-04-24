@@ -139,17 +139,30 @@ class ReleaseValidator:
                                 "Incorrect track title '{0}' should be: '{1}'".format(track.track_title,
                                                                                       lastfm_title))
 
-                # track artists
-                for track in release.tracks.values():
-                    for artist in track.artists:
-                        try:
-                            validated_artist = self.lastfm.get_artist(normalize_str(artist)).artist_name
-                            if validated_artist != artist:
-                                violations.add("Incorrectly spelled Track Artist '{0}' (should be '{1}')"
-                                               .format(artist, validated_artist))
-                        except LastfmCache.ArtistNotFoundError:  # as e:
-                            pass
-                            # violations.add(str(e))
+            # track artists
+            for track in release.tracks.values():
+                for artist in track.artists:
+                    try:
+                        validated_artist = self.lastfm.get_artist(normalize_str(artist)).artist_name
+                        if validated_artist != artist:
+                            violations.add("Incorrectly spelled Track Artist '{0}' (should be '{1}')"
+                                           .format(artist, validated_artist))
+                    except LastfmCache.ArtistNotFoundError:  # as e:
+                        pass
+                        # violations.add(str(e))
+
+            # release artists
+            for track in release.tracks.values():
+                for artist in track.release_artists:
+                    try:
+                        validated_artist = self.lastfm.get_artist(normalize_str(artist)).artist_name
+                        if validated_artist != artist:
+                            violations.add("Incorrectly spelled Track Artist '{0}' (should be '{1}')"
+                                           .format(artist, validated_artist))
+                    except LastfmCache.ArtistNotFoundError:  # as e:
+                        pass
+                        # violations.add(str(e))
+
 
         validated_track_numbers = release.validate_track_numbers()
         if validated_track_numbers:
@@ -331,25 +344,45 @@ class ReleaseValidator:
                             and track.track_title.lower() == track.track_title:
                             track.track_title = lastfm_title
 
-                # track artists
-                for track in release.tracks.values():
-                    validated_artists = []
-                    for artist in track.artists:
-                        while True:
-                            try:
-                                validated_artists.append(self.lastfm.get_artist(normalize_str(artist)).artist_name)
-                                break
-                            except LastfmCache.ConnectionError:
-                                logging.getLogger(__name__).error(
-                                    "Connection error while retrieving artist, retrying...")
-                                time.sleep(1)
-                            except LastfmCache.ArtistNotFoundError:
-                                break
-                            except AttributeError:  # TODO remove when pylast is fixed
-                                break
+            # track artists
+            for track in release.tracks.values():
+                validated_artists = []
+                for artist in track.artists:
+                    while True:
+                        try:
+                            validated_artists.append(self.lastfm.get_artist(normalize_str(artist)).artist_name)
+                            break
+                        except LastfmCache.ConnectionError:
+                            logging.getLogger(__name__).error(
+                                "Connection error while retrieving artist, retrying...")
+                            time.sleep(1)
+                        except LastfmCache.ArtistNotFoundError:
+                            break
+                        except AttributeError:  # TODO remove when pylast is fixed
+                            break
 
-                    if len(validated_artists) == len(track.artists):
-                        track.artists = validated_artists
+                if len(validated_artists) == len(track.artists):
+                    track.artists = validated_artists
+
+            # release artists
+            for track in release.tracks.values():
+                validated_artists = []
+                for artist in track.release_artists:
+                    while True:
+                        try:
+                            validated_artists.append(self.lastfm.get_artist(normalize_str(artist)).artist_name)
+                            break
+                        except LastfmCache.ConnectionError:
+                            logging.getLogger(__name__).error(
+                                "Connection error while retrieving artist, retrying...")
+                            time.sleep(1)
+                        except LastfmCache.ArtistNotFoundError:
+                            break
+                        except AttributeError:  # TODO remove when pylast is fixed
+                            break
+
+                if len(validated_artists) == len(track.artists):
+                    track.release_artists = validated_artists
 
         return release
 
