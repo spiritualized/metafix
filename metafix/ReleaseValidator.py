@@ -105,8 +105,9 @@ class ReleaseValidator:
 
                     validated_release_artists.append(validated_release_artist)
                 except LastfmCache.ArtistNotFoundError:
-                    violations.add("Lookup failed of release artist '{release_artist}'"
-                                   .format(release_artist=artist.strip()))
+                    violations.add(
+                        Violation(ViolationType.ARTIST_LOOKUP, "Lookup failed of release artist '{release_artist}'"
+                                  .format(release_artist=artist.strip())))
 
         # release title
         release_title = release.validate_release_title()
