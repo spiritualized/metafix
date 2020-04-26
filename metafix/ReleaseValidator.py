@@ -6,12 +6,13 @@ import time
 from collections import OrderedDict
 from typing import List
 
-import pylast
 from lastfmcache import LastfmCache
 from ordered_set import OrderedSet
 
 from metafix.Release import Release
 from metafix.Track import Track
+from metafix.Violation import Violation
+from metafix.constants import ViolationType
 from metafix.functions import normalize_str, flatten_artists, normalize_track_title, split_release_title, \
     tag_filter_all, extract_track_disc, unique
 
@@ -27,50 +28,67 @@ class ReleaseValidator:
         # leading/trailing whitespace
         for filename, track in release.tracks.items():
             if track.artists != track.strip_whitespace_artists():
-                violations.add("File '{0}' has leading/trailing whitespace in its Artist(s)".format(filename))
-                isinstance(track, Track)
+                violations.add(
+                    Violation(ViolationType.ARTIST_WHITESPACE,
+                              "File '{0}' has leading/trailing whitespace in its Artist(s)".format(filename)))
 
         for filename, track in release.tracks.items():
             if track.release_artists != track.strip_whitespace_release_artists():
-                violations.add("File '{0}' has leading/trailing whitespace in its Album/Release Artist(s)"
-                               .format(filename))
+                violations.add(
+                    Violation(ViolationType.RELEASE_ARTIST_WHITESPACE,
+                              "File '{0}' has leading/trailing whitespace in its Album/Release Artist(s)"
+                              .format(filename)))
 
         for filename, track in release.tracks.items():
             if track.date != track.strip_whitespace_date():
-                violations.add("File '{0}' has leading/trailing whitespace in its Year/Date".format(filename))
+                violations.add(
+                    Violation(ViolationType.DATE_WHITESPACE,
+                              "File '{0}' has leading/trailing whitespace in its Year/Date".format(filename)))
 
         for filename, track in release.tracks.items():
             if track.release_title != track.strip_whitespace_release_title():
-                violations.add("File '{0}' has leading/trailing whitespace in its Album/Release Title"
-                               .format(filename))
+                violations.add(
+                    Violation(ViolationType.RELEASE_TITLE_WHITESPACE,
+                              "File '{0}' has leading/trailing whitespace in its Album/Release Title"
+                              .format(filename)))
 
         for filename, track in release.tracks.items():
             if track.track_title != track.strip_whitespace_track_title():
-                violations.add("File '{0}' has leading/trailing whitespace in its Track Title"
-                               .format(filename))
+                violations.add(
+                    Violation(ViolationType.TRACK_TITLE_WHITESPACE,
+                              "File '{0}' has leading/trailing whitespace in its Track Title"
+                              .format(filename)))
 
         for filename, track in release.tracks.items():
             if track.genres != track.strip_whitespace_genres():
-                violations.add("File '{0}' has leading/trailing whitespace in its Genre(s)"
-                               .format(filename))
+                violations.add(
+                    Violation(ViolationType.GENRE_WHITESPACE,
+                              "File '{0}' has leading/trailing whitespace in its Genre(s)"
+                              .format(filename)))
 
         # release date
         if not release.validate_release_date():
-            violations.add("Release contains blank or inconsistent 'Date' tags")
+            violations.add(
+                Violation(ViolationType.DATE_INCONSISTENT, "Release contains blank or inconsistent 'Date' tags"))
 
         # artists
         if release.blank_artists():
-            violations.add("Release contains {0} tracks with missing 'Artist' tags".format(release.blank_artists()))
+            violations.add(
+                Violation(ViolationType.ARTIST_BLANK,
+                          "Release contains {0} tracks with missing 'Artist' tags".format(release.blank_artists())))
 
         # track titles
         if release.blank_track_titles():
-            violations.add("Release contains {0} tracks with missing 'Track Title' tags"
-                           .format(release.blank_track_titles()))
+            violations.add(
+                Violation(ViolationType.TRACK_TITLE_BLANK, "Release contains {0} tracks with missing 'Track Title' tags"
+                          .format(release.blank_track_titles())))
 
         # release artist
         release_artists = release.validate_release_artists()
         if not release_artists:
-            violations.add("Release contains blank or inconsistent 'Album/Release Artist' tags")
+            violations.add(
+                Violation(ViolationType.RELEASE_ARTIST_INCONSISTENT,
+                          "Release contains blank or inconsistent 'Album/Release Artist' tags"))
 
         # if the lastfmcache is present, validate the release artist
         validated_release_artists = release_artists
@@ -82,8 +100,10 @@ class ReleaseValidator:
 
                     if validated_release_artist != artist:
                         violations.add(
-                            "Incorrectly spelled Album/Release Artist '{0}' (should be '{1}')".format(
-                                artist, validated_release_artist))
+                            Violation(ViolationType.RELEASE_ARTIST_SPELLING,
+                                      "Incorrectly spelled Album/Release Artist '{0}' (should be '{1}')".format(
+                                          artist, validated_release_artist)))
+
                     validated_release_artists.append(validated_release_artist)
                 except LastfmCache.ArtistNotFoundError:
                     violations.add("Lookup failed of release artist '{release_artist}'"
@@ -92,7 +112,8 @@ class ReleaseValidator:
         # release title
         release_title = release.validate_release_title()
         if not release_title:
-            violations.add("Release contains blank or inconsistent 'Album/Release Title' tags")
+            violations.add(Violation(ViolationType.RELEASE_TITLE_INCONSISTENT,
+                                     "Release contains blank or inconsistent 'Album/Release Title' tags"))
 
         # lastfm artist validations
         if self.lastfm and release_title and len(validated_release_artists):
@@ -112,23 +133,27 @@ class ReleaseValidator:
                 if lastfm_release.release_name != release_title \
                      and lastfm_release.release_name.lower() != release_title.lower() \
                      and not any(x.isupper() for x in release_title):
-                    violations.add("Incorrectly spelled Album/Release name '{0}' (should be '{1}')"
-                                   .format(release_title, lastfm_release.release_name))
+                    violations.add(
+                        Violation(ViolationType.RELEASE_TITLE_SPELLING,
+                                  "Incorrectly spelled Album/Release name '{0}' (should be '{1}')"
+                                  .format(release_title, lastfm_release.release_name)))
 
                 # dates
                 if lastfm_release.release_date:
                     date = next(iter(release.tracks.values())).date
                     if lastfm_release.release_date != date and \
                             (not date or len(lastfm_release.release_date) >= len(date)):
-                        violations.add("Incorrect Release Date '{0}' (should be '{1}')"
-                                       .format(date, lastfm_release.release_date))
+                        violations.add(
+                            Violation(ViolationType.DATE_INCORRECT, "Incorrect Release Date '{0}' (should be '{1}')"
+                                      .format(date, lastfm_release.release_date)))
 
                 # tags/genres (only fail if 0-1 genres - i.e. lastfm tags have never been applied)
                 release_genres = release.validate_genres()
                 lastfm_tags = self.__get_lastfm_tags(release_title, validated_release_artists)
                 if len(release_genres) < 2 <= len(lastfm_tags):
-                    violations.add("Bad release genres: [{0}] (should be [{1}])"
-                                   .format(", ".join(release_genres), ", ".join(lastfm_tags)))
+                    violations.add(
+                        Violation(ViolationType.BAD_GENRES, "Bad release genres: [{0}] (should be [{1}])"
+                                  .format(", ".join(release_genres), ", ".join(lastfm_tags))))
 
                 # match and validate track titles (intersection only)
                 for track in release.tracks.values():
@@ -136,8 +161,9 @@ class ReleaseValidator:
                         lastfm_title = normalize_track_title(track.track_title)
                         if not track.track_title or track.track_title.lower() != lastfm_title.lower():
                             violations.add(
-                                "Incorrect track title '{0}' should be: '{1}'".format(track.track_title,
-                                                                                      lastfm_title))
+                                Violation(ViolationType.INCORRECT_TRACK_TITLE,
+                                          "Incorrect track title '{0}' should be: '{1}'".format(track.track_title,
+                                                                                                lastfm_title)))
 
             # track artists
             for track in release.tracks.values():
@@ -145,8 +171,10 @@ class ReleaseValidator:
                     try:
                         validated_artist = self.lastfm.get_artist(normalize_str(artist)).artist_name
                         if validated_artist != artist:
-                            violations.add("Incorrectly spelled Track Artist '{0}' (should be '{1}')"
-                                           .format(artist, validated_artist))
+                            violations.add(
+                                Violation(ViolationType.TRACK_ARTIST_SPELLING,
+                                          "Incorrectly spelled Track Artist '{0}' (should be '{1}')"
+                                          .format(artist, validated_artist)))
                     except LastfmCache.ArtistNotFoundError:  # as e:
                         pass
                         # violations.add(str(e))
@@ -157,12 +185,13 @@ class ReleaseValidator:
                     try:
                         validated_artist = self.lastfm.get_artist(normalize_str(artist)).artist_name
                         if validated_artist != artist:
-                            violations.add("Incorrectly spelled Track Artist '{0}' (should be '{1}')"
-                                           .format(artist, validated_artist))
+                            violations.add(
+                                Violation(ViolationType.RELEASE_ARTIST_SPELLING,
+                                          "Incorrectly spelled Release Artist '{0}' (should be '{1}')"
+                                          .format(artist, validated_artist)))
                     except LastfmCache.ArtistNotFoundError:  # as e:
                         pass
                         # violations.add(str(e))
-
 
         validated_track_numbers = release.validate_track_numbers()
         if validated_track_numbers:
@@ -170,41 +199,52 @@ class ReleaseValidator:
             for disc in validated_track_numbers:
                 flattened_track_nums.append(
                     "\nDisc " + str(disc) + ": " + ",".join(str(i) for i in validated_track_numbers[disc]))
-            violations.add("Release does not have a full set of tracks:{0}".format("".join(flattened_track_nums)))
+            violations.add(
+                Violation(ViolationType.MISSING_TRACKS,
+                          "Release does not have a full set of tracks:{0}".format("".join(flattened_track_nums))))
 
         validated_total_tracks = release.validate_total_tracks()
         for disc in validated_total_tracks:
-            violations.add("Release disc {0} has blank, inconsistent or incorrect 'Total Tracks' tags".format(disc))
+            violations.add(
+                Violation(ViolationType.TOTAL_TRACKS_INCONSISTENT,
+                          "Release disc {0} has blank, inconsistent or incorrect 'Total Tracks' tags".format(disc)))
 
         # disc number
         validated_disc_numbers = release.validate_disc_numbers()
         if validated_disc_numbers:
             violations.add(
-                "Release does not have a full set of discs: {0}"
-                .format(", ".join(str(i) for i in validated_disc_numbers)))
+                Violation(ViolationType.MISSING_DISCS, "Release does not have a full set of discs: {0}"
+                          .format(", ".join(str(i) for i in validated_disc_numbers))))
 
         # total discs
         if not release.validate_total_discs():
-            violations.add("Release has incorrect 'Total Discs' tags")
+            violations.add(
+                Violation(ViolationType.TOTAL_DISCS_INCONSISTENT, "Release has incorrect 'Total Discs' tags"))
 
         # file type
         if len(release.get_tag_types()) != 1:
-            violations.add("Release has a mixture of tag types: {0}"
-                           .format(", ".join([str(x) for x in release.get_tag_types()])))
+            violations.add(
+                Violation(ViolationType.TAG_TYPES_INCONSISTENT, "Release has inconsistent tag types: {0}"
+                          .format(", ".join([str(x) for x in release.get_tag_types()]))))
 
         # bitrate - CBR/VBR/Vx/APS/APE
         if len(release.get_codecs()) != 1:
-            violations.add("Release has mismatched codecs: [{0}]".format(", ".join(release.get_codecs())))
+            violations.add(
+                Violation(ViolationType.CODECS_INCONSISTENT,
+                          "Release has inconsistent codecs: [{0}]".format(", ".join(release.get_codecs()))))
 
         if len(unique([int(x / 1000) for x in release.get_cbr_bitrates()])) > 1:
-            violations.add("Release has a mixture of CBR bitrates: {0}"
-                           .format(", ".join([str(x) for x in release.get_cbr_bitrates()])))
+            violations.add(
+                Violation(ViolationType.CBR_INCONSISTENT, "Release has inconsistent CBR bitrates: {0}"
+                          .format(", ".join([str(x) for x in release.get_cbr_bitrates()]))))
 
         # track titles
         for filename in release.tracks:
             correct_filename = release.tracks[filename].get_filename(release.is_va())
             if correct_filename and filename != correct_filename:
-                violations.add("Invalid filename: {0} - should be '{1}'".format(filename, correct_filename))
+                violations.add(
+                    Violation(ViolationType.FILENAME,
+                              "Invalid filename: {0} - should be '{1}'".format(filename, correct_filename)))
 
         release.num_violations = len(violations)
 
@@ -393,7 +433,8 @@ class ReleaseValidator:
 
         lastfm_tags = [x for x in tag_filter_all(lastfm_release.tags, release_artists + [release_title], True)]
         if not lastfm_tags:
-            filtered_artists = [x for x in release_artists if x.lower() not in ["various artist", "various artists", "va"]]
+            filtered_artists = [x for x in release_artists
+                                if x.lower() not in ["various artist", "various artists", "va"]]
             artists_tags = [self.lastfm.get_artist(artist).tags for artist in filtered_artists]
             weighted_tags = OrderedDict()
             for artist_tags in artists_tags:
