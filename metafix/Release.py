@@ -52,7 +52,7 @@ class Release:
             self.category = ReleaseCategory.ALBUM
 
     def is_va(self):
-        return self.category in {ReleaseCategory.COMPILATION, ReleaseCategory.GAME_SOUNDTRACK, ReleaseCategory.MIX,
+        return self.category in {ReleaseCategory.COMPILATION, ReleaseCategory.VIDEO_GAME_MUSIC, ReleaseCategory.MIX,
                                  ReleaseCategory.MIXTAPE, ReleaseCategory.SOUNDTRACK}
 
     def get_release_codec_setting(self, short=True) -> str:
@@ -125,7 +125,7 @@ class Release:
         release_source_str = "" if release_source == "CD" else "[{0}] ".format(release_source)
 
         title_first_categories = {ReleaseCategory.COMPILATION, ReleaseCategory.MIX, ReleaseCategory.MIXTAPE,
-                                  ReleaseCategory.GAME_SOUNDTRACK, ReleaseCategory.SOUNDTRACK}
+                                  ReleaseCategory.VIDEO_GAME_MUSIC, ReleaseCategory.SOUNDTRACK}
 
         # folder name
         if group_by_category is False and self.category in title_first_categories:
