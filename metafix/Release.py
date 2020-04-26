@@ -18,6 +18,7 @@ class Release:
         self.category = manual_category
         self.num_violations = None
         self.guess_category()
+        self.sort()
 
     def __eq__(self, other):
         return self.tracks == other.tracks
@@ -27,6 +28,23 @@ class Release:
         date = "<date not found>" if not track0.date else track0.date.split("-")[0]
         return "{0} - {1} - {2}"\
             .format(flatten_artists(track0.release_artists), date, track0.release_title)
+
+    def sort(self):
+        reordered = OrderedDict()
+
+        while len(self.tracks):
+            smallest_filename = next(iter(self.tracks))
+            smallest_track = self.tracks[smallest_filename]
+            for filename in self.tracks:
+                if self.tracks[filename] < smallest_track:
+                    smallest_filename = filename
+                    smallest_track = self.tracks[filename]
+            del self.tracks[smallest_filename]
+            reordered[smallest_filename] = smallest_track
+
+        self.tracks = reordered
+
+
 
     def guess_category(self) -> None:
         if self.category:
@@ -243,6 +261,41 @@ class Release:
             return OrderedDict()
         else:
             return track_numbers
+
+    def resequence_track_numbers(self):
+        """If multiple discs, disc numbers are complete, and track numbers are sequenced as if there is only one disc"""
+        track_numbers = self.validate_track_numbers()
+
+        if not track_numbers:
+            return
+
+        disc_nums = [x for x in track_numbers]
+        if disc_nums[0] != 1:
+            return
+        for i in range(len(disc_nums) - 1):
+            if disc_nums[i] != disc_nums[i+1] - 1:
+                return
+
+        flat_track_numbers = []
+        for disc in track_numbers:
+            flat_track_numbers += track_numbers[disc]
+
+        if flat_track_numbers[0] != 1:
+            return
+
+        curr_track = 1
+        curr_disc = 1
+        for filename in self.tracks:
+            if curr_disc != self.tracks[filename].disc_number:
+                curr_track = 1
+                curr_disc = self.tracks[filename].disc_number
+
+            self.tracks[filename].track_number = curr_track
+            curr_track += 1
+
+
+
+
 
     def get_total_tracks(self) -> Dict[int, int]:
 

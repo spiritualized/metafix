@@ -277,15 +277,18 @@ class ReleaseValidator:
                 if match:
                     release.tracks[filename].disc_number = int(match[0][1])
 
+        # reorder track numbers if they are sequential across discs
+        release.resequence_track_numbers()
+
         # fill in missing total track numbers
-        validated_track_numbers = release.get_total_tracks()
+        validated_disc_numbers = release.get_total_tracks()
         for track in release.tracks.values():
             disc_number = track.disc_number if track.disc_number else 1
-            if not track.total_tracks and validated_track_numbers.get(disc_number):
-                track.total_tracks = validated_track_numbers[disc_number]
+            if validated_disc_numbers.get(disc_number):
+                track.total_tracks = validated_disc_numbers[disc_number]
 
         # if disc number is missing and there appears to only be one disc, set to 1
-        if not release.validate_total_discs() and len(validated_track_numbers) == 1:
+        if not release.validate_total_discs() and len(validated_disc_numbers) == 1:
             for track in release.tracks.values():
                 track.disc_number = 1
 
