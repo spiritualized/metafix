@@ -10,7 +10,6 @@ from lastfmcache import LastfmCache
 from ordered_set import OrderedSet
 
 from metafix.Release import Release
-from metafix.Track import Track
 from metafix.Violation import Violation
 from metafix.constants import ViolationType
 from metafix.functions import normalize_str, flatten_artists, normalize_track_title, split_release_title, \
@@ -22,7 +21,7 @@ class ReleaseValidator:
     def __init__(self, lastfm: LastfmCache = None):
         self.lastfm = lastfm
 
-    def validate(self, release: Release) -> List[str]:
+    def validate(self, release: Release) -> List[Violation]:
         violations = OrderedSet()
 
         # leading/trailing whitespace

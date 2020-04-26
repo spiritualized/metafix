@@ -51,3 +51,4 @@ class ViolationType(Enum):
     CODECS_INCONSISTENT = 'codecs'
     CBR_INCONSISTENT = 'cbr'
     FILENAME = 'filename'
+    FOLDER_NAME = 'folder-name'
