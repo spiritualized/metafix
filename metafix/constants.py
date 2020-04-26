@@ -52,3 +52,4 @@ class ViolationType(Enum):
     CBR_INCONSISTENT = 'cbr'
     FILENAME = 'filename'
     FOLDER_NAME = 'folder-name'
+    ARTIST_LOOKUP = 'artist-lookup'
