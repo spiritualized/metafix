@@ -263,11 +263,15 @@ class ReleaseValidator:
             track.genres = track.strip_whitespace_genres()
 
         # extract missing track and disc numbers from filenames
+        validated_track_numbers = release.validate_track_numbers()
+        validated_disc_numbers = release.validate_disc_numbers()
         for filename in release.tracks:
             track_num, disc_num = extract_track_disc(filename)
-            if not release.tracks[filename].track_number and track_num:
+            if (not release.tracks[filename].track_number and track_num) or validated_track_numbers:
                 release.tracks[filename].track_number = track_num
-            if not release.tracks[filename].disc_number and disc_num:
+                if validated_track_numbers and disc_num:
+                    release.tracks[filename].disc_number = disc_num
+            if (not release.tracks[filename].disc_number and disc_num) or validated_disc_numbers:
                 release.tracks[filename].disc_number = disc_num
 
         # extract missing disc numbers from folder name
@@ -277,30 +281,18 @@ class ReleaseValidator:
                 if match:
                     release.tracks[filename].disc_number = int(match[0][1])
 
-        # reorder track numbers if they are sequential across discs
-        release.resequence_track_numbers()
-
-        # fill in missing total track numbers
-        validated_disc_numbers = release.get_total_tracks()
+        # normalize track titles
         for track in release.tracks.values():
-            disc_number = track.disc_number if track.disc_number else 1
-            if validated_disc_numbers.get(disc_number):
-                track.total_tracks = validated_disc_numbers[disc_number]
-
-        # if disc number is missing and there appears to only be one disc, set to 1
-        if not release.validate_total_discs() and len(validated_disc_numbers) == 1:
-            for track in release.tracks.values():
-                track.disc_number = 1
-
-        # fill in missing total disc numbers
-        if not release.validate_total_discs():
-            total_discs = release.get_total_discs()
-            if total_discs:
-                for track in release.tracks.values():
-                    track.total_discs = total_discs
+            if track.track_title:
+                normalized_title = normalize_track_title(track.track_title)
+                if track.track_title.lower() != normalized_title.lower():
+                        track.track_title = normalized_title
 
         # release artists
         release_artists = release.validate_release_artists()
+        if not release_artists:
+            release_artists = release.extract_release_artist()
+
         validated_release_artists = []
         if self.lastfm and release_artists:
             for artist in release_artists:
@@ -325,7 +317,7 @@ class ReleaseValidator:
             if track.release_title != release_title:
                 track.release_title = release_title
 
-        # lastfm artist validations
+        # lastfm validations
         if self.lastfm and len(validated_release_artists) and release_title:
             # extract (edition info) from release titles
             release_title, release_edition = split_release_title(normalize_str(release_title))
@@ -372,6 +364,17 @@ class ReleaseValidator:
                 if len(release_genres) < 2 <= len(lastfm_tags):
                     for track in release.tracks.values():
                         track.genres = lastfm_tags
+
+                # fill missing track numbers from lastfm
+                for track in release.tracks.values():
+                    if track.track_number:
+                        continue
+
+                    track_num_matches = [x for x in lastfm_release.tracks
+                                         if normalize_track_title(lastfm_release.tracks[x].track_name).lower() ==
+                                         normalize_track_title(track.track_title).lower()]
+                    if track_num_matches and len(track_num_matches) == 1:
+                        track.track_number = track_num_matches[0]
 
                 # match and validate track titles (intersection only)
                 for track in release.tracks.values():
@@ -426,6 +429,28 @@ class ReleaseValidator:
 
                 if len(validated_artists) == len(track.artists):
                     track.release_artists = validated_artists
+
+        # reorder track numbers if they are sequential across discs
+        release.resequence_track_numbers()
+
+        # fill in missing total track numbers
+        validated_disc_numbers = release.get_total_tracks()
+        for track in release.tracks.values():
+            disc_number = track.disc_number if track.disc_number else 1
+            if validated_disc_numbers.get(disc_number):
+                track.total_tracks = validated_disc_numbers[disc_number]
+
+        # if disc number is missing and there appears to only be one disc, set to 1
+        if not release.validate_total_discs() and len(validated_disc_numbers) == 1:
+            for track in release.tracks.values():
+                track.disc_number = 1
+
+        # fill in missing total disc numbers
+        if not release.validate_total_discs():
+            total_discs = release.get_total_discs()
+            if total_discs:
+                for track in release.tracks.values():
+                    track.total_discs = total_discs
 
         return release
 

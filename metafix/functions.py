@@ -210,6 +210,11 @@ def extract_track_disc(filename):
     if match and len(match[0]) > 2:
         disc = int(match[0][:-2])
 
+    if not track:
+        match = re.findall(r"[ \-_]{1}(\d{1,2})[ \-_]", filename)
+        if match and len(match) == 1:
+            track = int(match[0])
+
     return track, disc
 
 

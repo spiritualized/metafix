@@ -213,6 +213,10 @@ class Release:
             return unique(release_artists[0])
         return []
 
+    def extract_release_artist(self) -> List[str]:
+        artists = unique([x.artists for x in self.tracks.values()])
+        return artists[0] if len(artists) == 1 else []
+
     # return release title if consistent
     def validate_release_title(self) -> Optional[str]:
         release_titles = unique([track.release_title for track in self.tracks.values()])
@@ -280,8 +284,12 @@ class Release:
         for disc in track_numbers:
             flat_track_numbers += track_numbers[disc]
 
-        if flat_track_numbers[0] != 1:
+        if not flat_track_numbers or flat_track_numbers[0] != 1:
             return
+
+        for i in range(len(flat_track_numbers) - 1):
+            if flat_track_numbers[i] != flat_track_numbers[i+1] - 1:
+                return
 
         curr_track = 1
         curr_disc = 1
@@ -376,7 +384,7 @@ class Release:
         return unique([track.get_codec_setting(short=True) for track in self.tracks.values()])
 
     def get_cbr_bitrates(self) -> List[int]:
-        if (self.get_codecs()[0] if len(self.get_codecs()) else "") == "CBR":
+        if (self.get_codecs()[0] if len(self.get_codecs()) == 1 else "") == "CBR":
             return unique([track.stream_info.bitrate for track in self.tracks.values()])
         else:
             return []
