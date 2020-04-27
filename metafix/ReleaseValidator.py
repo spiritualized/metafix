@@ -342,7 +342,7 @@ class ReleaseValidator:
             if lastfm_release:
                 # release title
                 if lastfm_release.release_name != release_title \
-                        and lastfm_release.release_name.lower() != release_title.lower() \
+                        and lastfm_release.release_name.lower() == release_title.lower() \
                         and not any(x.isupper() for x in release_title):
                     release_title_full = lastfm_release.release_name
                     if release_edition:
@@ -377,11 +377,13 @@ class ReleaseValidator:
                         track.track_number = track_num_matches[0]
 
                 # match and validate track titles (intersection only)
+                track_numbers_validated =  not release.validate_track_numbers()
                 for track in release.tracks.values():
                     if track.track_number in lastfm_release.tracks:
                         lastfm_title = normalize_track_title(lastfm_release.tracks[track.track_number].track_name)
+
                         # if the track title is missing, or if it is lowercase and there is a case insensitive match
-                        if not track.track_title or \
+                        if (not track.track_title and track_numbers_validated) or \
                                 (track.track_title.islower() and track.track_title.lower() == lastfm_title.lower()):
                             track.track_title = lastfm_title
 
