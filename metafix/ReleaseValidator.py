@@ -13,7 +13,7 @@ from metafix.Release import Release
 from metafix.Violation import Violation
 from metafix.constants import ViolationType
 from metafix.functions import normalize_str, flatten_artists, normalize_track_title, split_release_title, \
-    tag_filter_all, extract_track_disc, unique
+    tag_filter_all, extract_track_disc, unique, extract_release_year
 
 
 class ReleaseValidator:
@@ -250,7 +250,7 @@ class ReleaseValidator:
 
         return list(violations)
 
-    def fix(self, release_in: Release) -> Release:
+    def fix(self, release_in: Release, folder_name: str) -> Release:
         release = copy.deepcopy(release_in)
 
         # fix leading/trailing whitespace
@@ -274,6 +274,12 @@ class ReleaseValidator:
             if (not release.tracks[filename].disc_number and disc_num) or validated_disc_numbers:
                 release.tracks[filename].disc_number = disc_num
 
+        # extract missing year from folder name
+        extracted_year = extract_release_year(folder_name)
+        if not release.validate_release_date() and extracted_year:
+            for track in release.tracks.values():
+                track.date = str(extracted_year)
+
         # extract missing disc numbers from folder name
         for filename in release.tracks:
             if not release.tracks[filename].disc_number:
@@ -286,7 +292,7 @@ class ReleaseValidator:
             if track.track_title:
                 normalized_title = normalize_track_title(track.track_title)
                 if track.track_title.lower() != normalized_title.lower():
-                        track.track_title = normalized_title
+                    track.track_title = normalized_title
 
         # release artists
         release_artists = release.validate_release_artists()
