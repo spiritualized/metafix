@@ -226,3 +226,7 @@ def extract_release_year(folder_name: Optional[int]):
     matches = [int(x[1]) for x in re.findall(r"(^|-|_| )(\d{4})($|-|_| )", folder_name)]
     if len(matches) == 1 and matches[0] >= 1920 and matches[0] <= datetime.date.today().year:
         return matches[0]
+
+    matches = [int(x[1]) for x in re.findall(r"(\(|\[|{)(\d{4})(\)|\]|})", folder_name)]
+    if len(matches) == 1 and matches[0] >= 1920 and matches[0] <= datetime.date.today().year:
+        return matches[0]

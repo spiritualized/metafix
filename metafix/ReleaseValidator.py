@@ -468,9 +468,7 @@ class ReleaseValidator:
             except LastfmCache.LastfmCacheError as e:
                 logging.getLogger(__name__).error(e)
 
-
         self.__lastfm_release_fixes(release, lastfm_release, release_artists, release_title, release_edition)
-
 
         # fix track artists using lastfm
         self.__lastfm_fix_track_artists(release)
