@@ -548,6 +548,10 @@ class ReleaseValidator:
                         logging.getLogger(__name__).error(
                             "Connection error while retrieving artist, retrying...")
                         time.sleep(1)
+                    except LastfmCache.LastfmCacheError:
+                        logging.getLogger(__name__).error(
+                            "Server error while retrieving artist, retrying...")
+                        time.sleep(1)
                     except LastfmCache.ArtistNotFoundError:
                         break
                     except AttributeError:  # TODO remove when pylast is fixed
