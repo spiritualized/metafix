@@ -398,6 +398,9 @@ class ReleaseValidator:
                 except LastfmCache.ConnectionError:
                     logging.getLogger(__name__).error("Connection error while retrieving artist, retrying...")
                     time.sleep(1)
+                except LastfmCache.LastfmCacheError:
+                    logging.getLogger(__name__).error("Server error while retrieving artist, retrying...")
+                    time.sleep(1)
 
         # update release artists for all tracks, if all were validated
         if len(validated_release_artists) == len(release_artists):
@@ -461,6 +464,9 @@ class ReleaseValidator:
                 break
             except LastfmCache.ConnectionError:
                 logging.getLogger(__name__).error("Connection error while retrieving release, retrying...")
+                time.sleep(1)
+            except LastfmCache.LastfmCacheError:
+                logging.getLogger(__name__).error("Server error while retrieving release, retrying...")
                 time.sleep(1)
             except LastfmCache.ReleaseNotFoundError as e:
                 logging.getLogger(__name__).error(e)
@@ -545,12 +551,10 @@ class ReleaseValidator:
                         validated_artists.append(self.lastfm.get_artist(normalize_str(artist)).artist_name)
                         break
                     except LastfmCache.ConnectionError:
-                        logging.getLogger(__name__).error(
-                            "Connection error while retrieving artist, retrying...")
+                        logging.getLogger(__name__).error("Connection error while retrieving artist, retrying...")
                         time.sleep(1)
                     except LastfmCache.LastfmCacheError:
-                        logging.getLogger(__name__).error(
-                            "Server error while retrieving artist, retrying...")
+                        logging.getLogger(__name__).error("Server error while retrieving artist, retrying...")
                         time.sleep(1)
                     except LastfmCache.ArtistNotFoundError:
                         break
@@ -570,8 +574,10 @@ class ReleaseValidator:
                         validated_artists.append(self.lastfm.get_artist(normalize_str(artist)).artist_name)
                         break
                     except LastfmCache.ConnectionError:
-                        logging.getLogger(__name__).error(
-                            "Connection error while retrieving artist, retrying...")
+                        logging.getLogger(__name__).error("Connection error while retrieving artist, retrying...")
+                        time.sleep(1)
+                    except LastfmCache.LastfmCacheError:
+                        logging.getLogger(__name__).error("Server error while retrieving artist, retrying...")
                         time.sleep(1)
                     except LastfmCache.ArtistNotFoundError:
                         break
