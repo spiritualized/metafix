@@ -133,7 +133,9 @@ class Release:
         release_codec = track1.get_codec_setting(short=codec_short)
 
         if release_codec in ["CBR", "MP3 CBR"] and len(unique([int(x/1000) for x in self.get_cbr_bitrates()])) == 1:
-            release_codec += str(int(self.get_cbr_bitrates()[0] / 1000))
+            cbr_bitrate = int(self.get_cbr_bitrates()[0] / 1000)
+            cbr_bitrate += cbr_bitrate % 2
+            release_codec += str(cbr_bitrate)
 
         elif release_codec in ["VBR", "MP3 VBR"] and self.get_vbr_bitrate():
             release_codec += str(int(self.get_vbr_bitrate() / 1000))
