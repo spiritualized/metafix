@@ -14,7 +14,7 @@ from metafix.Release import Release
 from metafix.Violation import Violation
 from metafix.constants import ViolationType
 from metafix.functions import normalize_str, flatten_artists, normalize_track_title, split_release_title, \
-    tag_filter_all, extract_track_disc, unique, extract_release_year
+    tag_filter_all, extract_track_disc, unique, extract_release_year, normalize_artist_name, normalize_release_title
 
 
 class ReleaseValidator:
@@ -119,7 +119,7 @@ class ReleaseValidator:
         # lastfm artist validations
         if self.lastfm and release_title and len(validated_release_artists):
             # extract (edition info) from release titles
-            release_title, _ = split_release_title(normalize_str(release_title))
+            release_title, _ = split_release_title(normalize_release_title(release_title))
 
             flattened_artist = flatten_artists(validated_release_artists)
             lastfm_release = None
@@ -170,7 +170,7 @@ class ReleaseValidator:
             for track in release.tracks.values():
                 for artist in track.artists:
                     try:
-                        validated_artist = self.lastfm.get_artist(normalize_str(artist)).artist_name
+                        validated_artist = self.lastfm.get_artist(normalize_artist_name(artist)).artist_name
                         if validated_artist != artist:
                             violations.add(
                                 Violation(ViolationType.TRACK_ARTIST_SPELLING,
@@ -184,7 +184,7 @@ class ReleaseValidator:
             for track in release.tracks.values():
                 for artist in track.release_artists:
                     try:
-                        validated_artist = self.lastfm.get_artist(normalize_str(artist)).artist_name
+                        validated_artist = self.lastfm.get_artist(normalize_artist_name(artist)).artist_name
                         if validated_artist != artist:
                             violations.add(
                                 Violation(ViolationType.RELEASE_ARTIST_SPELLING,
@@ -452,7 +452,7 @@ class ReleaseValidator:
             return
 
         # extract (edition info) from release titles
-        release_title, release_edition = split_release_title(normalize_str(release_title))
+        release_title, release_edition = split_release_title(normalize_release_title(release_title))
 
         flattened_artist = flatten_artists(release_artists)
 
@@ -548,7 +548,7 @@ class ReleaseValidator:
             for artist in track.artists:
                 while True:
                     try:
-                        validated_artists.append(self.lastfm.get_artist(normalize_str(artist)).artist_name)
+                        validated_artists.append(self.lastfm.get_artist(normalize_artist_name(artist)).artist_name)
                         break
                     except LastfmCache.ConnectionError:
                         logging.getLogger(__name__).error("Connection error while retrieving artist, retrying...")
@@ -571,7 +571,7 @@ class ReleaseValidator:
             for artist in track.release_artists:
                 while True:
                     try:
-                        validated_artists.append(self.lastfm.get_artist(normalize_str(artist)).artist_name)
+                        validated_artists.append(self.lastfm.get_artist(normalize_artist_name(artist)).artist_name)
                         break
                     except LastfmCache.ConnectionError:
                         logging.getLogger(__name__).error("Connection error while retrieving artist, retrying...")
