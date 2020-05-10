@@ -489,9 +489,8 @@ class ReleaseValidator:
             return
 
         # release title
-        if lastfm_release.release_name != release_title \
-                and lastfm_release.release_name.lower() == release_title.lower() \
-                and not any(x.isupper() for x in release_title):
+        if lastfm_release.release_name != release_title and \
+                ReleaseValidator.__lastfm_can_fix_release_title(release_title):
             release_title_full = lastfm_release.release_name
             if release_edition:
                 release_title_full = "{0} {1}".format(lastfm_release.release_name, release_edition)
@@ -586,3 +585,13 @@ class ReleaseValidator:
 
             if len(validated_artists) == len(track.artists):
                 track.release_artists = validated_artists
+
+
+    @staticmethod
+    def __lastfm_can_fix_release_title(release_title: str) -> bool:
+        exception_substrings = {'fabric'}
+        for substr in exception_substrings:
+            if substr.lower() in release_title.lower():
+                return False
+
+        return True
