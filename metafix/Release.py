@@ -226,7 +226,7 @@ class Release:
             return release_titles[0]
 
         # if the release title couldn't be validated, try normalizing it
-        release_titles = unique([normalize_str(track.release_title) for track in self.tracks.values()])
+        release_titles = unique([normalize_release_title(track.release_title) for track in self.tracks.values()])
         if len(release_titles) == 1 and release_titles[0] != "":
             return release_titles[0]
 
