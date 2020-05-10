@@ -92,6 +92,9 @@ def get_category_fix_name(release: "Release") -> Tuple[str, Optional[ReleaseCate
 def tag_filter(tag: str, ignore_substrings: List[str], capitalize: bool) -> Optional[str]:
     """Return none for a bad tag, otherwise return a cleaned up version of the tag"""
 
+    if len(tag) > 100:
+        return None
+
     for curr_ignore in ignore_substrings:
         if tag.lower() in curr_ignore.lower() or curr_ignore.lower() in tag.lower():
             return None
