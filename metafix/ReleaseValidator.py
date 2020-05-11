@@ -131,9 +131,8 @@ class ReleaseValidator:
 
             if lastfm_release:
                 # release title
-                if lastfm_release.release_name != release_title \
-                     and lastfm_release.release_name.lower() != release_title.lower() \
-                     and not any(x.isupper() for x in release_title):
+                if lastfm_release.release_name != release_title and \
+                        ReleaseValidator.__lastfm_can_fix_release_title(release_title):
                     violations.add(
                         Violation(ViolationType.RELEASE_TITLE_SPELLING,
                                   "Incorrectly spelled Album/Release name '{0}' (should be '{1}')"
