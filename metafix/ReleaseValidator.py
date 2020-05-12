@@ -132,7 +132,7 @@ class ReleaseValidator:
             if lastfm_release:
                 # release title
                 if lastfm_release.release_name != release_title and \
-                        ReleaseValidator.__lastfm_can_fix_release_title(release_title):
+                        ReleaseValidator.__lastfm_can_fix_release_title(release_title, lastfm_release.release_name):
                     violations.add(
                         Violation(ViolationType.RELEASE_TITLE_SPELLING,
                                   "Incorrectly spelled Album/Release name '{0}' (should be '{1}')"
@@ -412,6 +412,8 @@ class ReleaseValidator:
     def __fix_release_title(release: Release) -> None:
         """fix release title"""
         release_title = release.validate_release_title()
+        if not release_title:
+            return
         for track in release.tracks.values():
             if track.release_title != release_title:
                 track.release_title = release_title
@@ -489,7 +491,7 @@ class ReleaseValidator:
 
         # release title
         if lastfm_release.release_name != release_title and \
-                ReleaseValidator.__lastfm_can_fix_release_title(release_title):
+                ReleaseValidator.__lastfm_can_fix_release_title(release_title, lastfm_release.release_name):
             release_title_full = lastfm_release.release_name
             if release_edition:
                 release_title_full = "{0} {1}".format(lastfm_release.release_name, release_edition)
@@ -587,7 +589,10 @@ class ReleaseValidator:
 
 
     @staticmethod
-    def __lastfm_can_fix_release_title(release_title: str) -> bool:
+    def __lastfm_can_fix_release_title(release_title: str, fixed_title: str) -> bool:
+        if fixed_title.islower() and not release_title.islower():
+            return False
+
         exception_substrings = {'fabric'}
         for substr in exception_substrings:
             if substr.lower() in release_title.lower():

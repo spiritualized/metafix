@@ -28,7 +28,6 @@ def normalize_track_title(str_in):
     return normalize_str(str_in)
 
 def normalize_release_title(str_in):
-    str_in = ' '.join(str_in.replace("/", " / ").split())
     return normalize_str(str_in)
 
 def normalize_artist_name(str_in):
