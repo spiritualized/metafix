@@ -8,7 +8,7 @@ from cleartag.enums.TagType import TagType
 from cleartag.functions import normalize_path_chars
 from metafix.Track import Track
 from metafix.constants import ReleaseCategory
-from metafix.functions import unique, flatten_artists, get_category_fix_name, normalize_str
+from metafix.functions import unique, flatten_artists, get_category_fix_name, normalize_str, normalize_release_title
 
 
 class Release:
