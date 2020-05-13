@@ -53,3 +53,4 @@ class ViolationType(Enum):
     FILENAME = 'filename'
     FOLDER_NAME = 'folder-name'
     ARTIST_LOOKUP = 'artist-lookup'
+    UNREADABLE = 'unreadable'
