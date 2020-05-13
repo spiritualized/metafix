@@ -238,7 +238,7 @@ class Release:
             if disc_num not in track_numbers:
                 track_numbers[disc_num] = []
             if track.track_number:
-                track_numbers[disc_num].append(track.track_number)
+                track_numbers[disc_num].append(int(track.track_number))
 
         for disc_num in track_numbers:
             track_numbers[disc_num] = sorted(track_numbers[disc_num])
