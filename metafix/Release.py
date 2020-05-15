@@ -98,7 +98,10 @@ class Release:
             if len(cbr_bitrates) != 1:
                 return ""
 
-            return "{0}CBR{1}".format(prefix_str, int(round(cbr_bitrates[0] / 1000)))
+            cbr_bitrate = int(round(cbr_bitrates[0] / 1000))
+            cbr_bitrate += cbr_bitrate % 2
+
+            return "{0}CBR{1}".format(prefix_str, cbr_bitrate)
 
         elif codec_settings[0] == "VBR":
             average_bitrate = round(
@@ -130,15 +133,6 @@ class Release:
 
         release_artist = flatten_artists(track1.release_artists)
         year = track1.date.split("-")[0]
-        release_codec = track1.get_codec_setting(short=codec_short)
-
-        if release_codec in ["CBR", "MP3 CBR"] and len(unique([int(x/1000) for x in self.get_cbr_bitrates()])) == 1:
-            cbr_bitrate = int(self.get_cbr_bitrates()[0] / 1000)
-            cbr_bitrate += cbr_bitrate % 2
-            release_codec += str(cbr_bitrate)
-
-        elif release_codec in ["VBR", "MP3 VBR"] and self.get_vbr_bitrate():
-            release_codec += str(int(self.get_vbr_bitrate() / 1000))
 
         release_category_str = "[{0}] ".format(self.category.value) \
             if self.category != ReleaseCategory.ALBUM else ""
@@ -156,7 +150,7 @@ class Release:
                         year=year,
                         release_artist=release_artist,
                         release_category_str=release_category_str,
-                        release_codec=release_codec,
+                        release_codec=self.get_release_codec_setting(codec_short),
                         release_source_str=release_source_str))
 
         elif self.category in title_first_categories:
@@ -167,7 +161,7 @@ class Release:
                         year=year,
                         release_artist=release_artist,
                         release_category_str=release_category_str,
-                        release_codec=release_codec,
+                        release_codec=self.get_release_codec_setting(codec_short),
                         release_source_str=release_source_str))
 
         else:
@@ -183,7 +177,7 @@ class Release:
                         release_name=release_name,
                         release_category_str=release_category_str,
                         release_source_str=release_source_str,
-                        release_codec=release_codec))
+                        release_codec=self.get_release_codec_setting(codec_short)))
 
     # return true if the folder name can be validated
     def can_validate_folder_name(self) -> bool:

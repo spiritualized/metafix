@@ -176,7 +176,7 @@ class ReleaseValidator:
                                     Violation(ViolationType.TRACK_ARTIST_SPELLING,
                                               "Incorrectly spelled Track Artist '{0}' (should be '{1}')"
                                               .format(artist, validated_artist)))
-                                break
+                            break
                         except LastfmCache.ArtistNotFoundError:  # as e:
                             # violations.add(str(e))
                             break
