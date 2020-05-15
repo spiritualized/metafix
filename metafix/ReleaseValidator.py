@@ -168,30 +168,38 @@ class ReleaseValidator:
             # track artists
             for track in release.tracks.values():
                 for artist in track.artists:
-                    try:
-                        validated_artist = self.lastfm.get_artist(normalize_artist_name(artist)).artist_name
-                        if validated_artist != artist:
-                            violations.add(
-                                Violation(ViolationType.TRACK_ARTIST_SPELLING,
-                                          "Incorrectly spelled Track Artist '{0}' (should be '{1}')"
-                                          .format(artist, validated_artist)))
-                    except LastfmCache.ArtistNotFoundError:  # as e:
-                        pass
-                        # violations.add(str(e))
+                    while True:
+                        try:
+                            validated_artist = self.lastfm.get_artist(normalize_artist_name(artist)).artist_name
+                            if validated_artist != artist:
+                                violations.add(
+                                    Violation(ViolationType.TRACK_ARTIST_SPELLING,
+                                              "Incorrectly spelled Track Artist '{0}' (should be '{1}')"
+                                              .format(artist, validated_artist)))
+                                break
+                        except LastfmCache.ArtistNotFoundError:  # as e:
+                            # violations.add(str(e))
+                            break
+                        except LastfmCache.LastfmCacheError:
+                            time.sleep(1)
 
             # release artists
             for track in release.tracks.values():
                 for artist in track.release_artists:
-                    try:
-                        validated_artist = self.lastfm.get_artist(normalize_artist_name(artist)).artist_name
-                        if validated_artist != artist:
-                            violations.add(
-                                Violation(ViolationType.RELEASE_ARTIST_SPELLING,
-                                          "Incorrectly spelled Release Artist '{0}' (should be '{1}')"
-                                          .format(artist, validated_artist)))
-                    except LastfmCache.ArtistNotFoundError:  # as e:
-                        pass
-                        # violations.add(str(e))
+                    while True:
+                        try:
+                            validated_artist = self.lastfm.get_artist(normalize_artist_name(artist)).artist_name
+                            if validated_artist != artist:
+                                violations.add(
+                                    Violation(ViolationType.RELEASE_ARTIST_SPELLING,
+                                              "Incorrectly spelled Release Artist '{0}' (should be '{1}')"
+                                              .format(artist, validated_artist)))
+                            break
+                        except LastfmCache.ArtistNotFoundError:  # as e:
+                            # violations.add(str(e))
+                            break
+                        except LastfmCache.LastfmCacheError:
+                            time.sleep(1)
 
         validated_track_numbers = release.validate_track_numbers()
         if validated_track_numbers:
