@@ -81,7 +81,7 @@ class Release:
             return ""
 
         # check for mismatched codec settings
-        codec_settings = unique([track.get_codec_setting(short=True) for track in self.tracks.values()])
+        codec_settings = unique([track.get_codec_setting_str(short=True) for track in self.tracks.values()])
         if len(codec_settings) != 1:
             return ""
 
@@ -119,6 +119,7 @@ class Release:
         assert self.validate_release_date(), "Release date validation failed"
         assert self.validate_release_title(), "Release title validation failed"
         assert self.validate_release_artists(), "Release artists validation failed"
+        assert self.validate_codec(), "Codec validation failed"
 
         track1 = self.tracks[next(iter(self.tracks))]
 
@@ -179,10 +180,16 @@ class Release:
                         release_source_str=release_source_str,
                         release_codec=self.get_release_codec_setting(codec_short)))
 
+    def validate_codec(self) -> Optional[str]:
+        codec_settings = unique([track.get_codec() for track in self.tracks.values()])
+        if len(codec_settings) != 1:
+            return None
+        return codec_settings[0]
+
     # return true if the folder name can be validated
     def can_validate_folder_name(self) -> bool:
         return self.validate_release_date() is not None and self.validate_release_title() is not None \
-               and self.validate_release_artists() != []
+               and self.validate_release_artists() != [] and self.validate_codec()
 
     # return the folder name if valid
     def validate_folder_name(self, folder_name: str) -> Optional[str]:
@@ -377,7 +384,7 @@ class Release:
         return unique([track.stream_info.tag_type for track in self.tracks.values()])
 
     def get_codecs(self) -> List[str]:
-        return unique([track.get_codec_setting(short=True) for track in self.tracks.values()])
+        return unique([track.get_codec_setting_str(short=True) for track in self.tracks.values()])
 
     def get_cbr_bitrates(self) -> List[int]:
         if (self.get_codecs()[0] if len(self.get_codecs()) == 1 else "") == "CBR":
