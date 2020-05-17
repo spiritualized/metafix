@@ -494,6 +494,11 @@ class ReleaseValidator:
     def __lastfm_release_fixes(self, release: Release, lastfm_release: LastfmRelease, release_artists: List[str],
                                release_title: str, release_edition: str) -> None:
         """lastfm release fixes"""
+
+        if release_artists:
+            for track in release.tracks.values():
+                track.release_artists = release_artists
+
         if not lastfm_release:
             return
 
@@ -566,12 +571,12 @@ class ReleaseValidator:
                         logging.getLogger(__name__).error("Server error while retrieving artist, retrying...")
                         time.sleep(1)
                     except LastfmCache.ArtistNotFoundError:
+                        validated_artists.append(artist)
                         break
                     except AttributeError:  # TODO remove when pylast is fixed
                         break
 
-            if len(validated_artists) == len(track.artists):
-                track.artists = validated_artists
+            track.artists = validated_artists
 
     def __lastfm_fix_release_artists(self, release: Release) -> None:
         """fix release artists using lastfm"""

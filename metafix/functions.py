@@ -25,12 +25,14 @@ def unique(seq: List):
 
 def normalize_track_title(str_in):
     str_in = ' '.join(str_in.replace("/", " / ").split())
+    str_in = re.sub("(?i)( )?vs(.)?( )?", " vs. ", str_in)
     return normalize_str(str_in)
 
 def normalize_release_title(str_in):
     return normalize_str(str_in)
 
 def normalize_artist_name(str_in):
+    str_in = re.sub("(?i)( )?vs(.)?( )?", " vs. ", str_in)
     return normalize_str(str_in)
 
 
@@ -39,7 +41,6 @@ def normalize_str(music_str):
         return ""
     music_str = re.sub("(?i) feat(.)?( )?", " feat. ", music_str)
     music_str = re.sub("(?i)\\(feat(.)?( )?", "(feat. ", music_str)
-    music_str = re.sub("(?i)( )?vs(.)?( )?", " vs. ", music_str)
     music_str = re.sub(r'(?i) ?[\[{(]?(disc|disk|cd) ?(\d{1,2})[\]})]?', "", music_str)
     music_str = music_str.strip()
 
