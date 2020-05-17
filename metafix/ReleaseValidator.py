@@ -262,7 +262,7 @@ class ReleaseValidator:
         release = copy.deepcopy(release_in)
 
         # fix leading/trailing whitespace
-        self.__extract_track_disc_numbers_from_filenames(release)
+        self.__fix_whitespace(release)
 
         # extract missing track and disc numbers from filenames
         self.__extract_track_disc_numbers_from_filenames(release)
@@ -337,14 +337,14 @@ class ReleaseValidator:
         """extract missing track and disc numbers from filenames"""
         validated_track_numbers = release.validate_track_numbers()
         validated_disc_numbers = release.validate_disc_numbers()
-        for filename in release.tracks:
-            track_num, disc_num = extract_track_disc(filename)
-            if (not release.tracks[filename].track_number and track_num) or validated_track_numbers:
-                release.tracks[filename].track_number = track_num
+        for path in release.tracks:
+            track_num, disc_num = extract_track_disc(os.path.split(path)[-1])
+            if (not release.tracks[path].track_number and track_num) or validated_track_numbers:
+                release.tracks[path].track_number = track_num
                 if validated_track_numbers and disc_num:
-                    release.tracks[filename].disc_number = disc_num
-            if (not release.tracks[filename].disc_number and disc_num) or validated_disc_numbers:
-                release.tracks[filename].disc_number = disc_num
+                    release.tracks[path].disc_number = disc_num
+            if (not release.tracks[path].disc_number and disc_num) or validated_disc_numbers:
+                release.tracks[path].disc_number = disc_num
 
     @staticmethod
     def __extract_year_from_folder_name(release: Release, folder_name: str) -> None:
@@ -359,7 +359,7 @@ class ReleaseValidator:
         """extract missing disc numbers from folder name"""
         for filename in release.tracks:
             if not release.tracks[filename].disc_number:
-                match = re.findall(r'(?i)(disc|disk|cd) ?(\d{1,2})', os.path.split(filename)[0])
+                match = re.findall(r'(?i)(disc|disk|cd|part) ?(\d{1,2})', os.path.split(filename)[0])
                 if match:
                     release.tracks[filename].disc_number = int(match[0][1])
 
@@ -526,10 +526,11 @@ class ReleaseValidator:
             if track.track_number:
                 continue
 
-            track_num_matches = [x for x in lastfm_release.tracks
+            track_num_matches = [int(x) for x in lastfm_release.tracks
                                  if normalize_track_title(lastfm_release.tracks[x].track_name).lower() ==
                                  normalize_track_title(track.track_title).lower()]
-            if track_num_matches and len(track_num_matches) == 1:
+            if track_num_matches and len(track_num_matches) == 1 and not \
+                    [x.track_number for x in release.tracks.values() if x.track_number == track_num_matches[0]]:
                 track.track_number = track_num_matches[0]
 
         # match and validate track titles (intersection only)
