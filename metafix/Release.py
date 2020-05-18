@@ -7,15 +7,17 @@ from typing import Dict, List, Optional
 from cleartag.enums.TagType import TagType
 from cleartag.functions import normalize_path_chars
 from metafix.Track import Track
-from metafix.constants import ReleaseCategory
-from metafix.functions import unique, flatten_artists, get_category_fix_name, normalize_str, normalize_release_title
+from metafix.constants import ReleaseCategory, ReleaseSource
+from metafix.functions import unique, flatten_artists, get_category_fix_name, normalize_release_title
 
 
 class Release:
 
-    def __init__(self, tracks: Dict[str, Track], manual_category: ReleaseCategory = None):
+    def __init__(self, tracks: Dict[str, Track], manual_category: ReleaseCategory = ReleaseCategory.UNKNOWN,
+                 manual_source = ReleaseSource.UNKNOWN):
         self.tracks = tracks
         self.category = manual_category
+        self.source = manual_source
         self.num_violations = None
         self.guess_category()
         self.sort()
@@ -182,8 +184,7 @@ class Release:
         return -1
 
 
-    def get_folder_name(self, codec_short: bool = True, group_by_category: bool = False,
-                        manual_release_source: str = ""):
+    def get_folder_name(self, codec_short: bool = True, group_by_category: bool = False):
 
         assert self.validate_release_date(), "Release date validation failed"
         assert self.validate_release_title(), "Release title validation failed"
@@ -195,18 +196,11 @@ class Release:
         # clean release name, and category
         release_name, _ = get_category_fix_name(self)
 
-        release_source = "CD"
-        valid_release_sources = ['CD', 'WEB', 'Vinyl']
-        valid_release_sources_lower = [x.lower() for x in valid_release_sources]
-        if manual_release_source and manual_release_source.lower() in valid_release_sources_lower:
-            release_source = valid_release_sources[valid_release_sources_lower.index(manual_release_source.lower())]
-
         release_artist = flatten_artists(track1.release_artists)
         year = track1.date.split("-")[0]
 
-        release_category_str = "[{0}] ".format(self.category.value) \
-            if self.category != ReleaseCategory.ALBUM else ""
-        release_source_str = "" if release_source == "CD" else "[{0}] ".format(release_source)
+        release_category_str = "[{0}] ".format(self.category.value) if self.category != ReleaseCategory.ALBUM else ""
+        release_source_str = "[{0}] ".format(self.source.value) if self.source != ReleaseSource.CD else ""
 
         title_first_categories = {ReleaseCategory.COMPILATION, ReleaseCategory.MIX, ReleaseCategory.MIXTAPE,
                                   ReleaseCategory.VIDEO_GAME_MUSIC, ReleaseCategory.SOUNDTRACK}
@@ -259,10 +253,6 @@ class Release:
     def can_validate_folder_name(self) -> bool:
         return self.validate_release_date() is not None and self.validate_release_title() is not None \
                and self.validate_release_artists() != [] and self.validate_codec()
-
-    # return the folder name if valid
-    def validate_folder_name(self, folder_name: str) -> Optional[str]:
-        return folder_name if self.can_validate_folder_name() and self.get_folder_name() == folder_name else None
 
     # return release date if consistent
     def validate_release_date(self) -> str:
