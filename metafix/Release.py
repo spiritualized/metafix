@@ -45,7 +45,6 @@ class Release:
         self.tracks = reordered
 
 
-
     def guess_category(self) -> None:
         if self.category:
             return
@@ -112,6 +111,76 @@ class Release:
 
         else:
             return "{0}{1}".format(prefix_str, codec_settings[0])
+
+    def get_codec_rank(self) -> int:
+        """Return a codec indicating the release's codec ranking. Higher is better."""
+        codec = self.get_release_codec_setting()
+        if not codec:
+            return 0
+
+        rank = 1000
+
+        if codec in ["FLAC", "24bit FLAC", "V0"]: return rank
+        rank -= 1
+        if codec == "APE": return rank
+        rank -= 1
+        if codec == "CBR320": return rank
+        rank -= 1
+        if codec == "V1": return rank
+        rank -= 1
+        if codec == "vbr-old V1": return rank
+        rank -= 1
+        if codec == "V2": return rank
+        rank -= 1
+        if codec == "APS": return rank
+        rank -= 1
+        if codec == "V3": return rank
+        rank -= 1
+        if codec == "vbr-old V3": return rank
+        rank -= 1
+        if codec == "V4": return rank
+        rank -= 1
+        if codec == "APM": return rank
+        rank -= 1
+
+        # VBR/CBR/ABR: 320k > bitrate >= 256k
+        if len(codec) >= 5 and codec[:3] in ["VBR", "CBR", "ABR"] and codec[3:].isdigit():
+            curr_bitrate = 320
+            bitrate = int(codec[3:])
+
+            while curr_bitrate >= 256:
+                for curr_setting in ["VBR", "CBR", "ABR"]:
+                    if curr_setting == codec[:3] and bitrate <= curr_bitrate and bitrate >= curr_bitrate - 64:
+                        return rank
+                    rank -= 1
+
+                curr_bitrate -= 64
+
+        # V5 -> V9
+        for lame in ["V", "vbr-old V"]:
+            for num in range(5, 10):
+                if codec == "{0}{1}".format(lame, num):
+                    return rank
+                rank -= 1
+
+        # VBR/CBR/ABR: 255k > bitrate >= 0
+        if len(codec) >= 5 and codec[:3] in ["VBR", "CBR", "ABR"] and codec[3:].isdigit():
+            curr_bitrate = 192
+            bitrate = int(codec[3:])
+
+            while curr_bitrate > 0:
+                for curr_setting in ["VBR", "CBR", "ABR"]:
+                    if curr_setting == codec[:3] and bitrate <= curr_bitrate and bitrate >= curr_bitrate - 64:
+                        return rank
+                    rank -= 1
+
+                curr_bitrate -= 64
+
+        if "lame vbr method" in codec: return rank
+        rank -= 1
+
+        return -1
+
 
     def get_folder_name(self, codec_short: bool = True, group_by_category: bool = False,
                         manual_release_source: str = ""):
