@@ -194,3 +194,7 @@ class TestRelease(unittest.TestCase):
     def test_validate_genres(self):
         release = create_test_release()
         assert release.validate_genres() == next(iter(release.tracks.values())).genres
+
+    def test_get_codec_rank(self):
+        release = create_test_release()
+        assert release.get_codec_rank() == 973
