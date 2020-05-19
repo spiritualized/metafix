@@ -423,10 +423,9 @@ class ReleaseValidator:
         if not release_title:
             return
 
-        if release_title.endswith(" CD"):
-            release_title = release_title[:-3]
-        elif release_title.endswith(" CDS"):
-            release_title = release_title[:-4]
+        for category_stub in ["CD", "CDS", "CDM"]:
+            if release_title.endswith(" {0}".format(category_stub)):
+                release_title = release_title[:-(len(category_stub)+1)]
 
         for track in release.tracks.values():
             if track.release_title != release_title:
