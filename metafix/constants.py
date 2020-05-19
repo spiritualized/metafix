@@ -5,6 +5,7 @@ class ReleaseCategory(Enum):
     ALBUM = 'Album'
     ANTHOLOGY = 'Anthology'
     BOOTLEG = 'Bootleg'
+    CDM = 'CDM'
     COMPILATION = 'Compilation'
     CONCERT_RECORDING = 'Concert Recording'
     DEMO = 'Demo'
