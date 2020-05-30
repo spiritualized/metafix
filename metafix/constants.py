@@ -63,3 +63,6 @@ class ViolationType(Enum):
     FOLDER_NAME = 'folder-name'
     ARTIST_LOOKUP = 'artist-lookup'
     UNREADABLE = 'unreadable'
+    COMMENT_SUBSTRING = 'comment-substring'
+
+upgrade_message = "The application is expired. Please upgrade to the newest version."

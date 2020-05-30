@@ -12,15 +12,19 @@ from ordered_set import OrderedSet
 from lastfmcache.lastfmcache import LastfmRelease
 from metafix.Release import Release
 from metafix.Violation import Violation
-from metafix.constants import ViolationType
-from metafix.functions import normalize_str, flatten_artists, normalize_track_title, split_release_title, \
-    tag_filter_all, extract_track_disc, unique, extract_release_year, normalize_artist_name, normalize_release_title
+from metafix.constants import ViolationType, upgrade_message
+from metafix.functions import flatten_artists, normalize_track_title, split_release_title, tag_filter_all, \
+    extract_track_disc, unique, extract_release_year, normalize_artist_name, normalize_release_title
 
 
 class ReleaseValidator:
 
     def __init__(self, lastfm: LastfmCache = None):
         self.lastfm = lastfm
+        self.forbidden_comment_substrings = set()
+
+    def add_forbidden_comment_substring(self, forbidden_comment_substring: str) -> None:
+        self.forbidden_comment_substrings.add(forbidden_comment_substring.lower())
 
     def validate(self, release: Release) -> List[Violation]:
         violations = OrderedSet()
@@ -254,6 +258,16 @@ class ReleaseValidator:
                     Violation(ViolationType.FILENAME,
                               "Invalid filename: {0} - should be '{1}'".format(filename, correct_filename)))
 
+        # forbidden comment substrings
+        for track in release.tracks.values():
+            if not track.comment:
+                continue
+            for substr in self.forbidden_comment_substrings:
+                if substr in track.comment.lower():
+                    violations.add(
+                        Violation(ViolationType.COMMENT_SUBSTRING,
+                                  "Invalid comment: contains forbidden substring '{0}'".format(substr)))
+
         release.num_violations = len(violations)
 
         return list(violations)
@@ -299,6 +313,9 @@ class ReleaseValidator:
 
         # fix missing total disc numbers
         self.__fix_missing_total_discs(release)
+        
+        # fix forbidden comment substrings
+        self.__fix_forbidden_comment_substrings(release)
 
         return release
 
@@ -402,6 +419,9 @@ class ReleaseValidator:
                     break
                 except LastfmCache.ArtistNotFoundError:
                     break
+                except LastfmCache.UpgradeRequiredError:
+                    logging.getLogger(__name__).error(upgrade_message)
+                    exit(1)
                 except LastfmCache.ConnectionError:
                     logging.getLogger(__name__).error("Connection error while retrieving artist, retrying...")
                     time.sleep(1)
@@ -457,6 +477,14 @@ class ReleaseValidator:
                 for track in release.tracks.values():
                     track.total_discs = total_discs
 
+    def __fix_forbidden_comment_substrings(self, release: Release) -> None:
+        # forbidden comment substrings
+        for track in release.tracks.values():
+            if track.comment:
+                for substr in self.forbidden_comment_substrings:
+                    if substr in track.comment.lower():
+                        track.comment = None
+
     def __lastfm_fixes(self, release: Release, release_artists: List[str]) -> None:
         # lastfm fixes
 
@@ -476,17 +504,18 @@ class ReleaseValidator:
             try:
                 lastfm_release = self.lastfm.get_release(flattened_artist, release_title)
                 break
+            except LastfmCache.ReleaseNotFoundError as e:
+                logging.getLogger(__name__).error(e)
+                break
+            except LastfmCache.UpgradeRequiredError:
+                logging.getLogger(__name__).error(upgrade_message)
+                exit(1)
             except LastfmCache.ConnectionError:
                 logging.getLogger(__name__).error("Connection error while retrieving release, retrying...")
                 time.sleep(1)
             except LastfmCache.LastfmCacheError:
                 logging.getLogger(__name__).error("Server error while retrieving release, retrying...")
                 time.sleep(1)
-            except LastfmCache.ReleaseNotFoundError as e:
-                logging.getLogger(__name__).error(e)
-                break
-            except LastfmCache.LastfmCacheError as e:
-                logging.getLogger(__name__).error(e)
 
         self.__lastfm_release_fixes(release, lastfm_release, release_artists, release_title, release_edition)
 
@@ -569,15 +598,18 @@ class ReleaseValidator:
                     try:
                         validated_artists.append(self.lastfm.get_artist(normalize_artist_name(artist)).artist_name)
                         break
+                    except LastfmCache.ArtistNotFoundError:
+                        validated_artists.append(artist)
+                        break
+                    except LastfmCache.UpgradeRequiredError:
+                        logging.getLogger(__name__).error(upgrade_message)
+                        exit(1)
                     except LastfmCache.ConnectionError:
                         logging.getLogger(__name__).error("Connection error while retrieving artist, retrying...")
                         time.sleep(1)
                     except LastfmCache.LastfmCacheError:
                         logging.getLogger(__name__).error("Server error while retrieving artist, retrying...")
                         time.sleep(1)
-                    except LastfmCache.ArtistNotFoundError:
-                        validated_artists.append(artist)
-                        break
                     except AttributeError:  # TODO remove when pylast is fixed
                         break
 
@@ -592,20 +624,22 @@ class ReleaseValidator:
                     try:
                         validated_artists.append(self.lastfm.get_artist(normalize_artist_name(artist)).artist_name)
                         break
+                    except LastfmCache.ArtistNotFoundError:
+                        break
+                    except LastfmCache.UpgradeRequiredError:
+                        logging.getLogger(__name__).error(upgrade_message)
+                        exit(1)
                     except LastfmCache.ConnectionError:
                         logging.getLogger(__name__).error("Connection error while retrieving artist, retrying...")
                         time.sleep(1)
                     except LastfmCache.LastfmCacheError:
                         logging.getLogger(__name__).error("Server error while retrieving artist, retrying...")
                         time.sleep(1)
-                    except LastfmCache.ArtistNotFoundError:
-                        break
                     except AttributeError:  # TODO remove when pylast is fixed
                         break
 
             if len(validated_artists) == len(track.artists):
                 track.release_artists = validated_artists
-
 
     @staticmethod
     def __lastfm_can_fix_release_title(release_title: str, fixed_title: str) -> bool:
