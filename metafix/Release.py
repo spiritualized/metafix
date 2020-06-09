@@ -95,7 +95,7 @@ class Release:
 
         # check for mismatched CBR bitrates
         if codec_settings[0] == "CBR":
-            cbr_bitrates = unique([track.stream_info.bitrate for track in self.tracks.values()])
+            cbr_bitrates = unique([round(track.stream_info.bitrate, -3) for track in self.tracks.values()])
             if len(cbr_bitrates) != 1:
                 return ""
 
