@@ -135,7 +135,7 @@ class ReleaseValidator:
             for source in [x for x in ReleaseSource]:
                 if release_title.lower().endswith(" {0}".format(source.value.lower())):
                     violations.add(Violation(ViolationType.RELEASE_TITLE_SOURCE,
-                                             "Release title ends with source {0}".format(source.value())))
+                                             "Release title ends with source {0}".format(source.value)))
 
             # check if "[Category]" is contained in the release title
             for category in ReleaseCategory:
@@ -149,7 +149,7 @@ class ReleaseValidator:
             for category in [x for x in ReleaseCategory if x is not ReleaseCategory.ALBUM]:
                 if release_title.lower().endswith(" {0}".format(category.value.lower())):
                     violations.add(Violation(ViolationType.RELEASE_TITLE_CATEGORY,
-                                             "Release title ends with category {0}".format(category.value())))
+                                             "Release title ends with category {0}".format(category.value)))
 
         # lastfm artist validations
         if self.lastfm and release_title and len(validated_release_artists):
