@@ -12,7 +12,7 @@ from ordered_set import OrderedSet
 from lastfmcache.lastfmcache import LastfmRelease
 from metafix.Release import Release
 from metafix.Violation import Violation
-from metafix.constants import ViolationType, upgrade_message
+from metafix.constants import ViolationType, upgrade_message, ReleaseSource, ReleaseCategory
 from metafix.functions import flatten_artists, normalize_track_title, split_release_title, tag_filter_all, \
     extract_track_disc, unique, extract_release_year, normalize_artist_name, normalize_release_title
 
@@ -120,6 +120,37 @@ class ReleaseValidator:
             violations.add(Violation(ViolationType.RELEASE_TITLE_INCONSISTENT,
                                      "Release contains blank or inconsistent 'Album/Release Title' tags"))
 
+        bracket_pairs = [["[", "]"], ["(", ")"], ["{", "}"]]
+
+        if release_title:
+            # check if "[Source]" is contained in the release title
+            for source in ReleaseSource:
+                for brackets in bracket_pairs:
+                    curr_source = "{0}{1}{2}".format(brackets[0], source.value, brackets[1])
+                    if curr_source.lower() in release_title.lower():
+                        violations.add(Violation(ViolationType.RELEASE_TITLE_SOURCE,
+                                                 "Release title contains source {0}".format(curr_source)))
+
+            # check if the release title ends with a space and a source name, without brackets
+            for source in [x for x in ReleaseSource]:
+                if release_title.lower().endswith(" {0}".format(source.value.lower())):
+                    violations.add(Violation(ViolationType.RELEASE_TITLE_SOURCE,
+                                             "Release title ends with source {0}".format(source.value())))
+
+            # check if "[Category]" is contained in the release title
+            for category in ReleaseCategory:
+                for brackets in bracket_pairs:
+                    curr_category = "{0}{1}{2}".format(brackets[0], category.value, brackets[1])
+                    if curr_category.lower() in release_title.lower():
+                        violations.add(Violation(ViolationType.RELEASE_TITLE_CATEGORY,
+                                                 "Release title contains category {0}".format(curr_category)))
+
+            # check if the release title ends with a space and a category name, without brackets (except Album)
+            for category in [x for x in ReleaseCategory if x is not ReleaseCategory.ALBUM]:
+                if release_title.lower().endswith(" {0}".format(category.value.lower())):
+                    violations.add(Violation(ViolationType.RELEASE_TITLE_CATEGORY,
+                                             "Release title ends with category {0}".format(category.value())))
+
         # lastfm artist validations
         if self.lastfm and release_title and len(validated_release_artists):
             # extract (edition info) from release titles
@@ -162,7 +193,7 @@ class ReleaseValidator:
                 # match and validate track titles (intersection only)
                 for track in release.tracks.values():
                     if track.track_number in lastfm_release.tracks:
-                        lastfm_title = normalize_track_title(track.track_title)
+                        lastfm_title = normalize_track_title(lastfm_release.tracks[track.track_number].track_name)
                         if not track.track_title or track.track_title.lower() != lastfm_title.lower():
                             violations.add(
                                 Violation(ViolationType.INCORRECT_TRACK_TITLE,
@@ -447,6 +478,38 @@ class ReleaseValidator:
             if release_title.endswith(" {0}".format(category_stub)):
                 release_title = release_title[:-(len(category_stub)+1)]
 
+
+        bracket_pairs = [["[", "]"], ["(", ")"], ["{", "}"]]
+
+        # Remove "[Source]" from release title
+        for source in ReleaseSource:
+            for brackets in bracket_pairs:
+                curr_source = "{0}{1}{2}".format(brackets[0], source.value, brackets[1])
+                pattern = "(?i)( )?" + re.escape(curr_source)
+                if re.search(pattern, release_title):
+                    release_title = re.sub(pattern, "", release_title)
+
+        # Remove trailing ' Source' from release title
+        for source in [x for x in ReleaseSource]:
+            pattern = "(?i)( \-)? " + source.value + "$"
+            if re.search(pattern, release_title):
+                release_title = re.sub(pattern, "", release_title)
+
+        # Remove "[Category]" from release title
+        for category in ReleaseCategory:
+            for brackets in bracket_pairs:
+                curr_category = "{0}{1}{2}".format(brackets[0], category.value, brackets[1])
+                pattern = "(?i)( )?" + re.escape(curr_category)
+                if re.search(pattern, release_title):
+                    release_title = re.sub(pattern, "", release_title)
+
+        # Remove trailing ' category' from release title
+        for category in [x for x in ReleaseCategory if x is not ReleaseCategory.ALBUM]:
+            pattern = "(?i)( \-)? " + category.value + "$"
+            if re.search(pattern, release_title):
+                release_title = re.sub(pattern, "", release_title)
+
+        # Overwrite the release's 'release title' tags
         for track in release.tracks.values():
             if track.release_title != release_title:
                 track.release_title = release_title
@@ -578,15 +641,16 @@ class ReleaseValidator:
             if track.track_number in lastfm_release.tracks:
                 lastfm_title = normalize_track_title(lastfm_release.tracks[track.track_number].track_name)
 
-                # if the track title is missing, or if it is lowercase and there is a case insensitive match
-                if (not track.track_title and track_numbers_validated) or \
-                        (track.track_title.islower() and track.track_title.lower() == lastfm_title.lower()):
-                    track.track_title = lastfm_title
+                if track.track_title != lastfm_title:
+                    # if the track title is missing, or if it is lowercase and there is a case insensitive match
+                    if (not track.track_title and track_numbers_validated) or \
+                            (track.track_title.islower() and track.track_title.lower() == lastfm_title.lower()):
+                        track.track_title = lastfm_title
 
-                # case insensitive match, tag version has no capital letters
-                elif track.track_title.lower() == lastfm_title.lower() \
-                        and track.track_title.lower() == track.track_title:
-                    track.track_title = lastfm_title
+                    # case insensitive match, tag version has no capital letters
+                    elif track.track_title.lower() == lastfm_title.lower() \
+                            and track.track_title.lower() == track.track_title:
+                        track.track_title = lastfm_title
 
 
     def __lastfm_fix_track_artists(self, release: Release) -> None:

@@ -47,6 +47,8 @@ class ViolationType(Enum):
     RELEASE_ARTIST_SPELLING = 'release-artist-spelling'
     RELEASE_ARTIST_NOT_FOUND = 'release-artist-not-found'
     RELEASE_TITLE_INCONSISTENT = 'release-title-inconsistent'
+    RELEASE_TITLE_CATEGORY = 'release-title-category'
+    RELEASE_TITLE_SOURCE = 'release-title-source'
     RELEASE_TITLE_SPELLING = 'release-title-spelling'
     DATE_INCORRECT = 'date-incorrect'
     BAD_GENRES = 'bad-genres'
