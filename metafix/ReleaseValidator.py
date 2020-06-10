@@ -612,8 +612,7 @@ class ReleaseValidator:
         # dates
         if lastfm_release.release_date:
             for track in release.tracks.values():
-                if lastfm_release.release_date != track.date \
-                        and (not track.date or len(lastfm_release.release_date) >= len(track.date)):
+                if lastfm_release.release_date and lastfm_release.release_date != track.date:
                     track.date = lastfm_release.release_date
 
         # tags/genres (only fail if 0-1 genres - i.e. lastfm tags have never been applied)
