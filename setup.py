@@ -9,7 +9,7 @@ setup(
     keywords = ['metadata', 'validation', 'mp3', 'flac', 'python', 'library'],
     install_requires = [
                     'cleartag>=1.2.1',
-                    'lastfmcache>=1.2.0',
+                    'lastfmcache>=1.2.4',
                     'ordered-set>=3.1.1',
                 ],
 
