@@ -116,7 +116,11 @@ class Release:
 
     def get_codec_rank(self) -> int:
         """Return a codec indicating the release's codec ranking. Higher is better."""
-        codec = self.get_release_codec_setting()
+        return Release.get_codec_rank_static(self.get_release_codec_setting())
+
+    @staticmethod
+    def get_codec_rank_static(codec: str) -> int:
+        """Return a codec indicating the release's codec ranking. Higher is better."""
         if not codec:
             return 0
 

@@ -2,10 +2,10 @@ from distutils.core import setup
 setup(
     name = 'metafix',
     packages = ['metafix'],
-    version = '1.2.1',
+    version = '1.2.2',
     description = 'Provides validation and safe, automated repair of audio metadata. Supports MP3, FLAC, and other popular formats.',
     url = 'https://github.com/spiritualized/metafix',
-    download_url = 'https://github.com/spiritualized/metafix/archive/v1.2.1.tar.gz',
+    download_url = 'https://github.com/spiritualized/metafix/archive/v1.2.2.tar.gz',
     keywords = ['metadata', 'validation', 'mp3', 'flac', 'python', 'library'],
     install_requires = [
                     'cleartag>=1.2.1',
