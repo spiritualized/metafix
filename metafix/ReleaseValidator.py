@@ -22,6 +22,10 @@ class ReleaseValidator:
     def __init__(self, lastfm: LastfmCache = None):
         self.lastfm = lastfm
         self.forbidden_comment_substrings = set()
+        self.lastfm_track_title_validation = True
+
+    def disable_lastfm_track_title_validation(self) -> None:
+        self.lastfm_track_title_validation = False
 
     def add_forbidden_comment_substring(self, forbidden_comment_substring: str) -> None:
         self.forbidden_comment_substrings.add(forbidden_comment_substring.lower())
@@ -191,14 +195,15 @@ class ReleaseValidator:
                                   .format(", ".join(release_genres), ", ".join(lastfm_tags))))
 
                 # match and validate track titles (intersection only)
-                for track in release.tracks.values():
-                    if track.track_number in lastfm_release.tracks:
-                        lastfm_title = normalize_track_title(lastfm_release.tracks[track.track_number].track_name)
-                        if not track.track_title or track.track_title.lower() != lastfm_title.lower():
-                            violations.add(
-                                Violation(ViolationType.INCORRECT_TRACK_TITLE,
-                                          "Incorrect track title '{0}' should be: '{1}'".format(track.track_title,
-                                                                                                lastfm_title)))
+                if self.lastfm_track_title_validation:
+                    for track in release.tracks.values():
+                        if track.track_number in lastfm_release.tracks:
+                            lastfm_title = normalize_track_title(lastfm_release.tracks[track.track_number].track_name)
+                            if not track.track_title or track.track_title.lower() != lastfm_title.lower():
+                                violations.add(
+                                    Violation(ViolationType.INCORRECT_TRACK_TITLE,
+                                              "Incorrect track title '{0}' should be: '{1}'".format(track.track_title,
+                                                                                                    lastfm_title)))
 
             # track artists
             for track in release.tracks.values():
