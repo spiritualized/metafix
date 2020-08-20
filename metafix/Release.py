@@ -280,6 +280,10 @@ class Release:
         return []
 
     def extract_release_artist(self) -> List[str]:
+        release_artists = self.validate_release_artists()
+        if release_artists:
+            return release_artists
+
         artists = unique([x.artists for x in self.tracks.values()])
         return artists[0] if len(artists) == 1 else []
 
