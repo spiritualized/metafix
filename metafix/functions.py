@@ -49,7 +49,9 @@ def normalize_str(music_str):
 
 def flatten_artists(artists: List[str]) -> str:
 
-    if len(artists) == 1:
+    if not artists:
+        return ""
+    elif len(artists) == 1:
         return artists[0]
     elif len(artists) == 2:
         return "{0} & {1}".format(artists[0], artists[1])
