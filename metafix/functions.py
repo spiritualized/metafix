@@ -56,7 +56,7 @@ def flatten_artists(artists: List[str]) -> str:
     elif len(artists) == 2:
         return "{0} & {1}".format(artists[0], artists[1])
     else:
-        return "{0} & {1}".format(", ".join(artists[0:-2]), artists[-1])
+        return "{0} & {1}".format(", ".join(artists[0:-1]), artists[-1])
 
 
 def split_release_title(release_title_full):
