@@ -190,9 +190,11 @@ class ReleaseValidator:
                 release_genres = release.validate_genres()
                 lastfm_tags = self.__get_lastfm_tags(release_title, validated_release_artists)
                 if len(release_genres) < 2 <= len(lastfm_tags):
+                    min_tags = min(2, len(lastfm_tags))
                     violations.add(
-                        Violation(ViolationType.BAD_GENRES, "Bad release genres: [{0}] (should be [{1}])"
-                                  .format(", ".join(release_genres), ", ".join(lastfm_tags))))
+                        Violation(ViolationType.BAD_GENRES,
+                                  "Bad release genres: [{0}] (should be [{1}]). Add at least {2}"
+                                  .format(", ".join(release_genres), ", ".join(lastfm_tags), min_tags)))
 
                 # match and validate track titles (intersection only)
                 if self.lastfm_track_title_validation:
